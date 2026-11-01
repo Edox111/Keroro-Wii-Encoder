@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Keroro Wii Encoder</title>
+    <link rel="icon" type="image/png" href="/assets/Icon.png" />
+  </head>
+  <body data-theme="keroro">
+    <div id="drag-overlay" hidden aria-hidden="true" role="status" aria-live="polite">
+      <h2 id="drag-overlay-text">Drop Media Here</h2>
+    </div>
+    <div class="container">
+      <header>
+        <div class="header-heading">
+          <h1>Keroro Wii Encoder</h1>
+        </div>
+        <p class="subtitle">Downscale your anime for Nintendo Wii playback (640x480) | F11 full screen</p>
+        
+        <div class="platoon-bar" role="group" aria-label="Character theme">
+          <button type="button" class="platoon-btn" data-theme="keroro" aria-pressed="true" title="Sergeant Keroro">
+            <span class="icon-wrapper" aria-hidden="true"><img id="icon-keroro" width="26" height="26" alt="" /></span>
+            <span>Keroro</span>
+          </button>
+          <button type="button" class="platoon-btn" data-theme="tamama" aria-pressed="false" title="Private Tamama">
+            <span class="icon-wrapper" aria-hidden="true"><img id="icon-tamama" width="26" height="26" alt="" /></span>
+            <span>Tamama</span>
+          </button>
+          <button type="button" class="platoon-btn" data-theme="giroro" aria-pressed="false" title="Corporal Giroro">
+            <span class="icon-wrapper" aria-hidden="true"><img id="icon-giroro" width="26" height="26" alt="" /></span>
+            <span>Giroro</span>
+          </button>
+          <button type="button" class="platoon-btn" data-theme="kururu" aria-pressed="false" title="Sergeant Major Kururu">
+            <span class="icon-wrapper" aria-hidden="true"><img id="icon-kururu" width="26" height="26" alt="" /></span>
+            <span>Kururu</span>
+          </button>
+          <button type="button" class="platoon-btn" data-theme="dororo" aria-pressed="false" title="Assassin Dororo">
+            <span class="icon-wrapper" aria-hidden="true"><img id="icon-dororo" width="26" height="26" alt="" /></span>
+            <span>Dororo</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="card">
+        <div class="input-group">
+          <label for="inputFolder">Input Anime Folder:</label>
+          <div class="input-row">
+            <input type="text" id="inputFolder" placeholder="C:\Users\YourName\Videos\RawAnime" />
+            <button id="browseInputBtn" class="secondary-btn">Browse</button>
+          </div>
+          <p class="field-hint">Supported video containers: MP4, MKV, AVI, MOV, WMV, FLV, WebM. Output: MP4.</p>
+        </div>
+
+        <div class="input-group">
+          <label for="subtitleFolder">Input Subtitle Folder (Default):</label>
+          <div class="input-row">
+            <input type="text" id="subtitleFolder" placeholder="Follows the anime folder unless overridden" aria-describedby="subtitleHint" />
+            <button type="button" id="browseSubtitleBtn" class="secondary-btn">Browse</button>
+          </div>
+          <div class="subtitle-options">
+            <p id="subtitleHint" class="field-hint">Matches SRT, ASS, SSA, or VTT by filename or episode. Clear to skip subtitles.</p>
+            <button type="button" id="resetSubtitleBtn" class="secondary-btn">Use anime folder</button>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label for="outputFolder">Output Wii Folder:</label>
+          <div class="input-row">
+            <input type="text" id="outputFolder" placeholder="C:\Users\YourName\Videos\WiiOutput" />
+            <button id="browseOutputBtn" class="secondary-btn">Browse</button>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label for="animeTitle">Anime Title / Output Name Pattern:</label>
+          <input type="text" id="animeTitle" placeholder="Sgt Keroro (output: Sgt Keroro - Ep01 [Wii].mp4)" aria-describedby="outputNameHint" />
+          <p id="outputNameHint" class="field-hint" aria-live="polite">Original filename_Wii.mp4</p>
+        </div>
+
+        <div class="settings-grid">
+          <div class="input-group quality-setting">
+            <label for="crfSelect">Quality: <span id="crfValue">23</span></label>
+            <select id="crfSelect">
+              <option value="20">20 - High Quality (Larger files)</option>
+              <option value="23" selected>23 - Standard Wii Balance (Recommended)</option>
+              <option value="26">26 - Compressed (Smallest files for SD)</option>
+            </select>
+          </div>
+
+          <div class="input-group">
+            <label for="cpuMode">CPU usage:</label>
+            <select id="cpuMode" title="Background Mode reserves CPU capacity for desktop use. Full Throttle allows automatic full CPU threading.">
+              <option value="balanced">Background Mode</option>
+              <option value="maximum" selected>Full Throttle</option>
+            </select>
+          </div>
+        </div>
+        <div class="action-row">
+          <button id="convertBtn" class="primary-btn" disabled>Start Platoon Downscale</button>
+          <button type="button" id="previewBtn" class="secondary-btn" disabled>Preview First 10 Seconds</button>
+        </div>
+
+        <section id="encodingProgress" class="live-encoding-progress" hidden aria-label="Current encoding progress and ETA">
+          <div id="encodingProgressTrack" class="progress-container" role="progressbar" aria-label="Encoding progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div id="encodingProgressFill" class="progress-bar"></div>
+          </div>
+          <span id="encodingProgressText" role="status" aria-live="polite"></span>
+        </section>
+
+        <div class="preferences-row">
+          <label><input type="checkbox" id="uiSounds" checked /> UI sounds</label>
+          <label title="When enabled, closing hides the app and keeps encoding. Use the tray menu to exit."><input type="checkbox" id="minimizeOnClose" checked disabled /> Minimize to System Tray</label>
+          <button type="button" id="recoverBatchBtn" class="secondary-btn" hidden>Review interrupted batch</button>
+        </div>
+
+        <section class="status-box" aria-label="Encoding status and statistics">
+          <div id="status" role="status" aria-live="polite" aria-atomic="true">Ready - Waiting for folder selection</div>
+          <div id="fileName" class="file-name">No active video</div>
+          <div id="subtitleStatus" class="file-name">External subtitles off</div>
+          <div class="progress-label"><span id="fileLabel">Current file</span><span id="filePercent">0%</span></div>
+          <div id="fileProgress" class="progress-container" role="progressbar" aria-label="Current file progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div id="fileProgressBar" class="progress-bar"></div>
+          </div>
+          <div class="progress-label"><span>Overall batch</span><span id="batchPercent">0%</span></div>
+          <div id="batchProgress" class="progress-container" role="progressbar" aria-label="Overall batch progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div id="progressBar" class="progress-bar"></div>
+          </div>
+          <dl class="encoding-stats">
+            <div><dt>Encoded</dt><dd id="successCount">0</dd></div>
+            <div><dt>Skipped</dt><dd id="skippedCount">0</dd></div>
+            <div><dt>Failed</dt><dd id="failedCount">0</dd></div>
+            <div><dt>Elapsed</dt><dd id="elapsed">0:00</dd></div>
+            <div><dt>Speed</dt><dd id="speed">—</dd></div>
+            <div><dt>FPS</dt><dd id="fps">—</dd></div>
+          </dl>
+          <details id="performanceDetails" hidden>
+            <summary>Last encode performance</summary>
+            <pre id="performanceText" class="performance-text"></pre>
+          </details>
+          <details id="errorDetails" hidden><summary>Warnings and skipped files</summary><ul id="errorList" aria-label="Persistent file warnings and errors"></ul></details>
+          <p id="notice" class="notice" role="status" aria-live="polite"></p>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="previewModal" class="preview-modal" aria-labelledby="previewHeading">
+      <div class="preview-heading">
+        <h2 id="previewHeading">10-Second Encoding Preview</h2>
+        <button type="button" id="closePreviewBtn" class="secondary-btn" aria-label="Close preview">Close</button>
+      </div>
+      <video id="previewVideo" controls playsinline preload="metadata" aria-label="First ten seconds of the encoded video"></video>
+      <p class="field-hint">Check picture quality, aspect ratio, audio, and subtitle alignment before starting the full batch.</p>
+      <p id="previewPlaybackStatus" role="status" aria-live="polite"></p>
+    </dialog>
+
+    <script type="module" src="/src/main.ts"></script>
+    <dialog id="errorModal" class="preview-modal" aria-labelledby="errorHeading">
+      <h2 id="errorHeading">Task needs attention</h2>
+      <pre id="errorMessage" class="dialog-message"></pre>
+      <button type="button" id="closeErrorBtn" class="secondary-btn">Close</button>
+    </dialog>
+    <dialog id="recoveryModal" class="preview-modal" aria-labelledby="recoveryHeading">
+      <h2 id="recoveryHeading">Interrupted batch recovery</h2>
+      <p id="recoveryMessage" class="dialog-message"></p>
+      <p class="field-hint">Resume keeps the original queue and names. Discard removes the checkpoint, preserving completed videos.</p>
+      <div class="recovery-actions">
+        <button type="button" id="resumeBatchBtn" class="primary-btn">Resume batch</button>
+        <button type="button" id="laterRecoveryBtn" class="secondary-btn">Later</button>
+        <button type="button" id="discardRecoveryBtn" class="secondary-btn">Discard checkpoint</button>
+      </div>
+    </dialog>
+  </body>
+</html>

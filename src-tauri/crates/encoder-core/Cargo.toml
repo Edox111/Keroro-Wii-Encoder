@@ -1,0 +1,19 @@
+[package]
+name = "keroro-encoder-core"
+version = "1.0.0"
+edition = "2024"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+regex = "1"
+encoding_rs = "0.8.35"
+tempfile = "3.27.0"
+getrandom = "0.4.3"
+num_cpus = "1.17.0"
+log = { version = "0.4.34", features = ["std"] }
+serde_json = "1"
+sha2 = "0.10.9"
+tokio = { version = "1", features = ["fs", "process", "io-util", "rt-multi-thread", "macros", "time", "sync"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Storage_FileSystem", "Win32_Foundation", "Win32_System_Power", "Win32_System_Threading", "Win32_System_JobObjects", "Win32_Security"] }
