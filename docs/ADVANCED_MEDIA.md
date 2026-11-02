@@ -16,16 +16,16 @@ folder, then Anime Title. The audio boost control and its IPC/backend setting
 have been removed. Batch and preview share these output arguments:
 
 ```rust
-.args(["-c:a", "aac", "-b:a", "128k", "-ac", "2", "-ar", "44100", "-movflags", "+faststart"])
+.args(["-c:a", "aac", "-b:a", "160k", "-ac", "2", "-ar", "48000", "-movflags", "+faststart"])
 ```
 
-128 kbps is the AAC encoder target, not a promise that every file's measured
-average bitrate is exactly 128000 bits/second. No gain filter is applied.
+160 kbps is the AAC encoder target, not a promise that every file's measured
+average bitrate is exactly 160000 bits/second. No gain filter is applied.
 Timestamps remain under FFmpeg's normal input handling; the application does
 not reset the audio timeline independently. Lossy audio conversion cannot be
 lossless, guarantee no clipping for arbitrary source material, or repair every
 source timing problem. Tests check unchanged audio level and aligned A/V stream
-start/duration on a known fixture, plus 44.1 kHz stereo AAC for preview and batch.
+start/duration on a known fixture, plus 48 kHz stereo AAC for preview and batch.
 
 `subtitleFolderOverridden` persists intent separately from paths. Input browsing
 and typing update subtitles only in automatic mode. Successful subtitle browsing

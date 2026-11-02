@@ -24,10 +24,11 @@ for both worker cleanup and the process reaper. A paused encoder is resumed
 before graceful shutdown; bounded termination and the Windows job object remain
 fallbacks for stalled or interrupted workers.
 
-The common preview/batch profile uses an aspect-preserving 640x480 padded canvas,
-square pixels, 8-bit 4:2:0 H.264 Baseline/Main Level 3.0, a 30 fps ceiling, a 2 Mbps
-VBV video rate limit with a 4 Mb buffer, and AAC-LC stereo targeting 160 kbps at
-44.1 kHz. CPU CRF remains selectable within those limits. Hardware rate-control settings use the corresponding quality/bitrate mapping; see [hardware encoding](HARDWARE_ENCODING.md). MP4 fast-start metadata
+The common preview/batch profile uses the selected SD raster and SAR-aware display
+aspect handling, 8-bit 4:2:0 H.264 Main Level 3.1, a calculated frame-rate
+ceiling (30 fps maximum; 25 fps for 848x480), a 3.2 Mbps
+VBV video rate limit with a 6 Mb buffer, and AAC-LC stereo targeting 160 kbps at
+48 kHz. CPU CRF remains selectable within those limits. Hardware rate-control settings use the corresponding quality/bitrate mapping; see [hardware encoding](HARDWARE_ENCODING.md). MP4 fast-start metadata
 and explicit MP4 muxing support `.mp4.part` output before atomic finalization.
 Lower source frame rates are retained. Wii player compatibility still depends
 on the player and content; this is not a hardware playback certification.
@@ -52,7 +53,7 @@ source inspection, and output validation.
 
 ## Windows sidecar packaging
 
-The public release version is `1.0.0`. `bundle.externalBin` includes both
+The configured application version is `1.1.0`. `bundle.externalBin` includes both
 `binaries/ffmpeg` and `binaries/ffprobe`; source executables carry the
 `-x86_64-pc-windows-msvc.exe` target suffix. NSIS installs them as `ffmpeg.exe`
 and `ffprobe.exe` beside the main executable. The custom OLED template retains

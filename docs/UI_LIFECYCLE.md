@@ -1,13 +1,14 @@
 # UI layout, F11, and tray lifecycle
 
-Current verification supersedes earlier dependency-blocker notes below: the full
-Tauri source compiles, 51 core unit tests and 9 media integration tests pass, and
-all 3 Tauri state tests pass. Frontend build/browser checks also pass. No final
-release executable or installer has been rebuilt.
+Current verification for v1.1.0 covers the frontend build, browser mode/preset
+and lifecycle regressions, native compilation, and a real-media aspect/subtitle
+pipeline regression. Protected Rust source fingerprints and frontend AST checks
+confirm the UI refactor preserved the existing runtime hooks. No final release
+installer has been rebuilt or published for this UI change.
 
 These changes are applied to the existing source tree. The Vite entry point is
 root `index.html`, not `src/index.html`. The public release version is now
-1.0.0, synchronized across npm, Tauri, Cargo, and their lockfiles.
+1.1.0, synchronized across npm, Tauri, Cargo, and their lockfiles.
 
 ## Controls and layout
 

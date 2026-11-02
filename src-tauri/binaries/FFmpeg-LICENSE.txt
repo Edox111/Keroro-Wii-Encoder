@@ -1,0 +1,1619 @@
+                    GNU GENERAL PUBLIC LICENSE
+                       Version 3, 29 June 2007
+
+ Copyright (C) 2007 Free Software Foundation, Inc. <http://fsf.org/>
+ Everyone is permitted to copy and distribute verbatim copies
+ of this license document, but changing it is not allowed.
+
+                            Preamble
+
+  The GNU General Public License is a free, copyleft license for
+software and other kinds of works.
+
+  The licenses for most software and other practical works are designed
+to take away your freedom to share and change the works.  By contrast,
+the GNU General Public License is intended to guarantee your freedom to
+share and change all versions of a program--to make sure it remains free
+software for all its users.  We, the Free Software Foundation, use the
+GNU General Public License for most of our software; it applies also to
+any other work released this way by its authors.  You can apply it to
+your programs, too.
+
+  When we speak of free software, we are referring to freedom, not
+price.  Our General Public Licenses are designed to make sure that you
+have the freedom to distribute copies of free software (and charge for
+them if you wish), that you receive source code or can get it if you
+want it, that you can change the software or use pieces of it in new
+free programs, and that you know you can do these things.
+
+  To protect your rights, we need to prevent others from denying you
+these rights or asking you to surrender the rights.  Therefore, you have
+certain responsibilities if you distribute copies of the software, or if
+you modify it: responsibilities to respect the freedom of others.
+
+  For example, if you distribute copies of such a program, whether
+gratis or for a fee, you must pass on to the recipients the same
+freedoms that you received.  You must make sure that they, too, receive
+or can get the source code.  And you must show them these terms so they
+know their rights.
+
+  Developers that use the GNU GPL protect your rights with two steps:
+(1) assert copyright on the software, and (2) offer you this License
+giving you legal permission to copy, distribute and/or modify it.
+
+  For the developers' and authors' protection, the GPL clearly explains
+that there is no warranty for this free software.  For both users' and
+authors' sake, the GPL requires that modified versions be marked as
+changed, so that their problems will not be attributed erroneously to
+authors of previous versions.
+
+  Some devices are designed to deny users access to install or run
+modified versions of the software inside them, although the manufacturer
+can do so.  This is fundamentally incompatible with the aim of
+protecting users' freedom to change the software.  The systematic
+pattern of such abuse occurs in the area of products for individuals to
+use, which is precisely where it is most unacceptable.  Therefore, we
+have designed this version of the GPL to prohibit the practice for those
+products.  If such problems arise substantially in other domains, we
+stand ready to extend this provision to those domains in future versions
+of the GPL, as needed to protect the freedom of users.
+
+  Finally, every program is threatened constantly by software patents.
+States should not allow patents to restrict development and use of
+software on general-purpose computers, but in those that do, we wish to
+avoid the special danger that patents applied to a free program could
+make it effectively proprietary.  To prevent this, the GPL assures that
+patents cannot be used to render the program non-free.
+
+  The precise terms and conditions for copying, distribution and
+modification follow.
+
+                       TERMS AND CONDITIONS
+
+  0. Definitions.
+
+  "This License" refers to version 3 of the GNU General Public License.
+
+  "Copyright" also means copyright-like laws that apply to other kinds of
+works, such as semiconductor masks.
+
+  "The Program" refers to any copyrightable work licensed under this
+License.  Each licensee is addressed as "you".  "Licensees" and
+"recipients" may be individuals or organizations.
+
+  To "modify" a work means to copy from or adapt all or part of the work
+in a fashion requiring copyright permission, other than the making of an
+exact copy.  The resulting work is called a "modified version" of the
+earlier work or a work "based on" the earlier work.
+
+  A "covered work" means either the unmodified Program or a work based
+on the Program.
+
+  To "propagate" a work means to do anything with it that, without
+permission, would make you directly or secondarily liable for
+infringement under applicable copyright law, except executing it on a
+computer or modifying a private copy.  Propagation includes copying,
+distribution (with or without modification), making available to the
+public, and in some countries other activities as well.
+
+  To "convey" a work means any kind of propagation that enables other
+parties to make or receive copies.  Mere interaction with a user through
+a computer network, with no transfer of a copy, is not conveying.
+
+  An interactive user interface displays "Appropriate Legal Notices"
+to the extent that it includes a convenient and prominently visible
+feature that (1) displays an appropriate copyright notice, and (2)
+tells the user that there is no warranty for the work (except to the
+extent that warranties are provided), that licensees may convey the
+work under this License, and how to view a copy of this License.  If
+the interface presents a list of user commands or options, such as a
+menu, a prominent item in the list meets this criterion.
+
+  1. Source Code.
+
+  The "source code" for a work means the preferred form of the work
+for making modifications to it.  "Object code" means any non-source
+form of a work.
+
+  A "Standard Interface" means an interface that either is an official
+standard defined by a recognized standards body, or, in the case of
+interfaces specified for a particular programming language, one that
+is widely used among developers working in that language.
+
+  The "System Libraries" of an executable work include anything, other
+than the work as a whole, that (a) is included in the normal form of
+packaging a Major Component, but which is not part of that Major
+Component, and (b) serves only to enable use of the work with that
+Major Component, or to implement a Standard Interface for which an
+implementation is available to the public in source code form.  A
+"Major Component", in this context, means a major essential component
+(kernel, window system, and so on) of the specific operating system
+(if any) on which the executable work runs, or a compiler used to
+produce the work, or an object code interpreter used to run it.
+
+  The "Corresponding Source" for a work in object code form means all
+the source code needed to generate, install, and (for an executable
+work) run the object code and to modify the work, including scripts to
+control those activities.  However, it does not include the work's
+System Libraries, or general-purpose tools or generally available free
+programs which are used unmodified in performing those activities but
+which are not part of the work.  For example, Corresponding Source
+includes interface definition files associated with source files for
+the work, and the source code for shared libraries and dynamically
+linked subprograms that the work is specifically designed to require,
+such as by intimate data communication or control flow between those
+subprograms and other parts of the work.
+
+  The Corresponding Source need not include anything that users
+can regenerate automatically from other parts of the Corresponding
+Source.
+
+  The Corresponding Source for a work in source code form is that
+same work.
+
+  2. Basic Permissions.
+
+  All rights granted under this License are granted for the term of
+copyright on the Program, and are irrevocable provided the stated
+conditions are met.  This License explicitly affirms your unlimited
+permission to run the unmodified Program.  The output from running a
+covered work is covered by this License only if the output, given its
+content, constitutes a covered work.  This License acknowledges your
+rights of fair use or other equivalent, as provided by copyright law.
+
+  You may make, run and propagate covered works that you do not
+convey, without conditions so long as your license otherwise remains
+in force.  You may convey covered works to others for the sole purpose
+of having them make modifications exclusively for you, or provide you
+with facilities for running those works, provided that you comply with
+the terms of this License in conveying all material for which you do
+not control copyright.  Those thus making or running the covered works
+for you must do so exclusively on your behalf, under your direction
+and control, on terms that prohibit them from making any copies of
+your copyrighted material outside their relationship with you.
+
+  Conveying under any other circumstances is permitted solely under
+the conditions stated below.  Sublicensing is not allowed; section 10
+makes it unnecessary.
+
+  3. Protecting Users' Legal Rights From Anti-Circumvention Law.
+
+  No covered work shall be deemed part of an effective technological
+measure under any applicable law fulfilling obligations under article
+11 of the WIPO copyright treaty adopted on 20 December 1996, or
+similar laws prohibiting or restricting circumvention of such
+measures.
+
+  When you convey a covered work, you waive any legal power to forbid
+circumvention of technological measures to the extent such circumvention
+is effected by exercising rights under this License with respect to
+the covered work, and you disclaim any intention to limit operation or
+modification of the work as a means of enforcing, against the work's
+users, your or third parties' legal rights to forbid circumvention of
+technological measures.
+
+  4. Conveying Verbatim Copies.
+
+  You may convey verbatim copies of the Program's source code as you
+receive it, in any medium, provided that you conspicuously and
+appropriately publish on each copy an appropriate copyright notice;
+keep intact all notices stating that this License and any
+non-permissive terms added in accord with section 7 apply to the code;
+keep intact all notices of the absence of any warranty; and give all
+recipients a copy of this License along with the Program.
+
+  You may charge any price or no price for each copy that you convey,
+and you may offer support or warranty protection for a fee.
+
+  5. Conveying Modified Source Versions.
+
+  You may convey a work based on the Program, or the modifications to
+produce it from the Program, in the form of source code under the
+terms of section 4, provided that you also meet all of these conditions:
+
+    a) The work must carry prominent notices stating that you modified
+    it, and giving a relevant date.
+
+    b) The work must carry prominent notices stating that it is
+    released under this License and any conditions added under section
+    7.  This requirement modifies the requirement in section 4 to
+    "keep intact all notices".
+
+    c) You must license the entire work, as a whole, under this
+    License to anyone who comes into possession of a copy.  This
+    License will therefore apply, along with any applicable section 7
+    additional terms, to the whole of the work, and all its parts,
+    regardless of how they are packaged.  This License gives no
+    permission to license the work in any other way, but it does not
+    invalidate such permission if you have separately received it.
+
+    d) If the work has interactive user interfaces, each must display
+    Appropriate Legal Notices; however, if the Program has interactive
+    interfaces that do not display Appropriate Legal Notices, your
+    work need not make them do so.
+
+  A compilation of a covered work with other separate and independent
+works, which are not by their nature extensions of the covered work,
+and which are not combined with it such as to form a larger program,
+in or on a volume of a storage or distribution medium, is called an
+"aggregate" if the compilation and its resulting copyright are not
+used to limit the access or legal rights of the compilation's users
+beyond what the individual works permit.  Inclusion of a covered work
+in an aggregate does not cause this License to apply to the other
+parts of the aggregate.
+
+  6. Conveying Non-Source Forms.
+
+  You may convey a covered work in object code form under the terms
+of sections 4 and 5, provided that you also convey the
+machine-readable Corresponding Source under the terms of this License,
+in one of these ways:
+
+    a) Convey the object code in, or embodied in, a physical product
+    (including a physical distribution medium), accompanied by the
+    Corresponding Source fixed on a durable physical medium
+    customarily used for software interchange.
+
+    b) Convey the object code in, or embodied in, a physical product
+    (including a physical distribution medium), accompanied by a
+    written offer, valid for at least three years and valid for as
+    long as you offer spare parts or customer support for that product
+    model, to give anyone who possesses the object code either (1) a
+    copy of the Corresponding Source for all the software in the
+    product that is covered by this License, on a durable physical
+    medium customarily used for software interchange, for a price no
+    more than your reasonable cost of physically performing this
+    conveying of source, or (2) access to copy the
+    Corresponding Source from a network server at no charge.
+
+    c) Convey individual copies of the object code with a copy of the
+    written offer to provide the Corresponding Source.  This
+    alternative is allowed only occasionally and noncommercially, and
+    only if you received the object code with such an offer, in accord
+    with subsection 6b.
+
+    d) Convey the object code by offering access from a designated
+    place (gratis or for a charge), and offer equivalent access to the
+    Corresponding Source in the same way through the same place at no
+    further charge.  You need not require recipients to copy the
+    Corresponding Source along with the object code.  If the place to
+    copy the object code is a network server, the Corresponding Source
+    may be on a different server (operated by you or a third party)
+    that supports equivalent copying facilities, provided you maintain
+    clear directions next to the object code saying where to find the
+    Corresponding Source.  Regardless of what server hosts the
+    Corresponding Source, you remain obligated to ensure that it is
+    available for as long as needed to satisfy these requirements.
+
+    e) Convey the object code using peer-to-peer transmission, provided
+    you inform other peers where the object code and Corresponding
+    Source of the work are being offered to the general public at no
+    charge under subsection 6d.
+
+  A separable portion of the object code, whose source code is excluded
+from the Corresponding Source as a System Library, need not be
+included in conveying the object code work.
+
+  A "User Product" is either (1) a "consumer product", which means any
+tangible personal property which is normally used for personal, family,
+or household purposes, or (2) anything designed or sold for incorporation
+into a dwelling.  In determining whether a product is a consumer product,
+doubtful cases shall be resolved in favor of coverage.  For a particular
+product received by a particular user, "normally used" refers to a
+typical or common use of that class of product, regardless of the status
+of the particular user or of the way in which the particular user
+actually uses, or expects or is expected to use, the product.  A product
+is a consumer product regardless of whether the product has substantial
+commercial, industrial or non-consumer uses, unless such uses represent
+the only significant mode of use of the product.
+
+  "Installation Information" for a User Product means any methods,
+procedures, authorization keys, or other information required to install
+and execute modified versions of a covered work in that User Product from
+a modified version of its Corresponding Source.  The information must
+suffice to ensure that the continued functioning of the modified object
+code is in no case prevented or interfered with solely because
+modification has been made.
+
+  If you convey an object code work under this section in, or with, or
+specifically for use in, a User Product, and the conveying occurs as
+part of a transaction in which the right of possession and use of the
+User Product is transferred to the recipient in perpetuity or for a
+fixed term (regardless of how the transaction is characterized), the
+Corresponding Source conveyed under this section must be accompanied
+by the Installation Information.  But this requirement does not apply
+if neither you nor any third party retains the ability to install
+modified object code on the User Product (for example, the work has
+been installed in ROM).
+
+  The requirement to provide Installation Information does not include a
+requirement to continue to provide support service, warranty, or updates
+for a work that has been modified or installed by the recipient, or for
+the User Product in which it has been modified or installed.  Access to a
+network may be denied when the modification itself materially and
+adversely affects the operation of the network or violates the rules and
+protocols for communication across the network.
+
+  Corresponding Source conveyed, and Installation Information provided,
+in accord with this section must be in a format that is publicly
+documented (and with an implementation available to the public in
+source code form), and must require no special password or key for
+unpacking, reading or copying.
+
+  7. Additional Terms.
+
+  "Additional permissions" are terms that supplement the terms of this
+License by making exceptions from one or more of its conditions.
+Additional permissions that are applicable to the entire Program shall
+be treated as though they were included in this License, to the extent
+that they are valid under applicable law.  If additional permissions
+apply only to part of the Program, that part may be used separately
+under those permissions, but the entire Program remains governed by
+this License without regard to the additional permissions.
+
+  When you convey a copy of a covered work, you may at your option
+remove any additional permissions from that copy, or from any part of
+it.  (Additional permissions may be written to require their own
+removal in certain cases when you modify the work.)  You may place
+additional permissions on material, added by you to a covered work,
+for which you have or can give appropriate copyright permission.
+
+  Notwithstanding any other provision of this License, for material you
+add to a covered work, you may (if authorized by the copyright holders of
+that material) supplement the terms of this License with terms:
+
+    a) Disclaiming warranty or limiting liability differently from the
+    terms of sections 15 and 16 of this License; or
+
+    b) Requiring preservation of specified reasonable legal notices or
+    author attributions in that material or in the Appropriate Legal
+    Notices displayed by works containing it; or
+
+    c) Prohibiting misrepresentation of the origin of that material, or
+    requiring that modified versions of such material be marked in
+    reasonable ways as different from the original version; or
+
+    d) Limiting the use for publicity purposes of names of licensors or
+    authors of the material; or
+
+    e) Declining to grant rights under trademark law for use of some
+    trade names, trademarks, or service marks; or
+
+    f) Requiring indemnification of licensors and authors of that
+    material by anyone who conveys the material (or modified versions of
+    it) with contractual assumptions of liability to the recipient, for
+    any liability that these contractual assumptions directly impose on
+    those licensors and authors.
+
+  All other non-permissive additional terms are considered "further
+restrictions" within the meaning of section 10.  If the Program as you
+received it, or any part of it, contains a notice stating that it is
+governed by this License along with a term that is a further
+restriction, you may remove that term.  If a license document contains
+a further restriction but permits relicensing or conveying under this
+License, you may add to a covered work material governed by the terms
+of that license document, provided that the further restriction does
+not survive such relicensing or conveying.
+
+  If you add terms to a covered work in accord with this section, you
+must place, in the relevant source files, a statement of the
+additional terms that apply to those files, or a notice indicating
+where to find the applicable terms.
+
+  Additional terms, permissive or non-permissive, may be stated in the
+form of a separately written license, or stated as exceptions;
+the above requirements apply either way.
+
+  8. Termination.
+
+  You may not propagate or modify a covered work except as expressly
+provided under this License.  Any attempt otherwise to propagate or
+modify it is void, and will automatically terminate your rights under
+this License (including any patent licenses granted under the third
+paragraph of section 11).
+
+  However, if you cease all violation of this License, then your
+license from a particular copyright holder is reinstated (a)
+provisionally, unless and until the copyright holder explicitly and
+finally terminates your license, and (b) permanently, if the copyright
+holder fails to notify you of the violation by some reasonable means
+prior to 60 days after the cessation.
+
+  Moreover, your license from a particular copyright holder is
+reinstated permanently if the copyright holder notifies you of the
+violation by some reasonable means, this is the first time you have
+received notice of violation of this License (for any work) from that
+copyright holder, and you cure the violation prior to 30 days after
+your receipt of the notice.
+
+  Termination of your rights under this section does not terminate the
+licenses of parties who have received copies or rights from you under
+this License.  If your rights have been terminated and not permanently
+reinstated, you do not qualify to receive new licenses for the same
+material under section 10.
+
+  9. Acceptance Not Required for Having Copies.
+
+  You are not required to accept this License in order to receive or
+run a copy of the Program.  Ancillary propagation of a covered work
+occurring solely as a consequence of using peer-to-peer transmission
+to receive a copy likewise does not require acceptance.  However,
+nothing other than this License grants you permission to propagate or
+modify any covered work.  These actions infringe copyright if you do
+not accept this License.  Therefore, by modifying or propagating a
+covered work, you indicate your acceptance of this License to do so.
+
+  10. Automatic Licensing of Downstream Recipients.
+
+  Each time you convey a covered work, the recipient automatically
+receives a license from the original licensors, to run, modify and
+propagate that work, subject to this License.  You are not responsible
+for enforcing compliance by third parties with this License.
+
+  An "entity transaction" is a transaction transferring control of an
+organization, or substantially all assets of one, or subdividing an
+organization, or merging organizations.  If propagation of a covered
+work results from an entity transaction, each party to that
+transaction who receives a copy of the work also receives whatever
+licenses to the work the party's predecessor in interest had or could
+give under the previous paragraph, plus a right to possession of the
+Corresponding Source of the work from the predecessor in interest, if
+the predecessor has it or can get it with reasonable efforts.
+
+  You may not impose any further restrictions on the exercise of the
+rights granted or affirmed under this License.  For example, you may
+not impose a license fee, royalty, or other charge for exercise of
+rights granted under this License, and you may not initiate litigation
+(including a cross-claim or counterclaim in a lawsuit) alleging that
+any patent claim is infringed by making, using, selling, offering for
+sale, or importing the Program or any portion of it.
+
+  11. Patents.
+
+  A "contributor" is a copyright holder who authorizes use under this
+License of the Program or a work on which the Program is based.  The
+work thus licensed is called the contributor's "contributor version".
+
+  A contributor's "essential patent claims" are all patent claims
+owned or controlled by the contributor, whether already acquired or
+hereafter acquired, that would be infringed by some manner, permitted
+by this License, of making, using, or selling its contributor version,
+but do not include claims that would be infringed only as a
+consequence of further modification of the contributor version.  For
+purposes of this definition, "control" includes the right to grant
+patent sublicenses in a manner consistent with the requirements of
+this License.
+
+  Each contributor grants you a non-exclusive, worldwide, royalty-free
+patent license under the contributor's essential patent claims, to
+make, use, sell, offer for sale, import and otherwise run, modify and
+propagate the contents of its contributor version.
+
+  In the following three paragraphs, a "patent license" is any express
+agreement or commitment, however denominated, not to enforce a patent
+(such as an express permission to practice a patent or covenant not to
+sue for patent infringement).  To "grant" such a patent license to a
+party means to make such an agreement or commitment not to enforce a
+patent against the party.
+
+  If you convey a covered work, knowingly relying on a patent license,
+and the Corresponding Source of the work is not available for anyone
+to copy, free of charge and under the terms of this License, through a
+publicly available network server or other readily accessible means,
+then you must either (1) cause the Corresponding Source to be so
+available, or (2) arrange to deprive yourself of the benefit of the
+patent license for this particular work, or (3) arrange, in a manner
+consistent with the requirements of this License, to extend the patent
+license to downstream recipients.  "Knowingly relying" means you have
+actual knowledge that, but for the patent license, your conveying the
+covered work in a country, or your recipient's use of the covered work
+in a country, would infringe one or more identifiable patents in that
+country that you have reason to believe are valid.
+
+  If, pursuant to or in connection with a single transaction or
+arrangement, you convey, or propagate by procuring conveyance of, a
+covered work, and grant a patent license to some of the parties
+receiving the covered work authorizing them to use, propagate, modify
+or convey a specific copy of the covered work, then the patent license
+you grant is automatically extended to all recipients of the covered
+work and works based on it.
+
+  A patent license is "discriminatory" if it does not include within
+the scope of its coverage, prohibits the exercise of, or is
+conditioned on the non-exercise of one or more of the rights that are
+specifically granted under this License.  You may not convey a covered
+work if you are a party to an arrangement with a third party that is
+in the business of distributing software, under which you make payment
+to the third party based on the extent of your activity of conveying
+the work, and under which the third party grants, to any of the
+parties who would receive the covered work from you, a discriminatory
+patent license (a) in connection with copies of the covered work
+conveyed by you (or copies made from those copies), or (b) primarily
+for and in connection with specific products or compilations that
+contain the covered work, unless you entered into that arrangement,
+or that patent license was granted, prior to 28 March 2007.
+
+  Nothing in this License shall be construed as excluding or limiting
+any implied license or other defenses to infringement that may
+otherwise be available to you under applicable patent law.
+
+  12. No Surrender of Others' Freedom.
+
+  If conditions are imposed on you (whether by court order, agreement or
+otherwise) that contradict the conditions of this License, they do not
+excuse you from the conditions of this License.  If you cannot convey a
+covered work so as to satisfy simultaneously your obligations under this
+License and any other pertinent obligations, then as a consequence you may
+not convey it at all.  For example, if you agree to terms that obligate you
+to collect a royalty for further conveying from those to whom you convey
+the Program, the only way you could satisfy both those terms and this
+License would be to refrain entirely from conveying the Program.
+
+  13. Use with the GNU Affero General Public License.
+
+  Notwithstanding any other provision of this License, you have
+permission to link or combine any covered work with a work licensed
+under version 3 of the GNU Affero General Public License into a single
+combined work, and to convey the resulting work.  The terms of this
+License will continue to apply to the part which is the covered work,
+but the special requirements of the GNU Affero General Public License,
+section 13, concerning interaction through a network will apply to the
+combination as such.
+
+  14. Revised Versions of this License.
+
+  The Free Software Foundation may publish revised and/or new versions of
+the GNU General Public License from time to time.  Such new versions will
+be similar in spirit to the present version, but may differ in detail to
+address new problems or concerns.
+
+  Each version is given a distinguishing version number.  If the
+Program specifies that a certain numbered version of the GNU General
+Public License "or any later version" applies to it, you have the
+option of following the terms and conditions either of that numbered
+version or of any later version published by the Free Software
+Foundation.  If the Program does not specify a version number of the
+GNU General Public License, you may choose any version ever published
+by the Free Software Foundation.
+
+  If the Program specifies that a proxy can decide which future
+versions of the GNU General Public License can be used, that proxy's
+public statement of acceptance of a version permanently authorizes you
+to choose that version for the Program.
+
+  Later license versions may give you additional or different
+permissions.  However, no additional obligations are imposed on any
+author or copyright holder as a result of your choosing to follow a
+later version.
+
+  15. Disclaimer of Warranty.
+
+  THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT PERMITTED BY
+APPLICABLE LAW.  EXCEPT WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT
+HOLDERS AND/OR OTHER PARTIES PROVIDE THE PROGRAM "AS IS" WITHOUT WARRANTY
+OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO,
+THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE.  THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE PROGRAM
+IS WITH YOU.  SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF
+ALL NECESSARY SERVICING, REPAIR OR CORRECTION.
+
+  16. Limitation of Liability.
+
+  IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING
+WILL ANY COPYRIGHT HOLDER, OR ANY OTHER PARTY WHO MODIFIES AND/OR CONVEYS
+THE PROGRAM AS PERMITTED ABOVE, BE LIABLE TO YOU FOR DAMAGES, INCLUDING ANY
+GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE
+USE OR INABILITY TO USE THE PROGRAM (INCLUDING BUT NOT LIMITED TO LOSS OF
+DATA OR DATA BEING RENDERED INACCURATE OR LOSSES SUSTAINED BY YOU OR THIRD
+PARTIES OR A FAILURE OF THE PROGRAM TO OPERATE WITH ANY OTHER PROGRAMS),
+EVEN IF SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF
+SUCH DAMAGES.
+
+  17. Interpretation of Sections 15 and 16.
+
+  If the disclaimer of warranty and limitation of liability provided
+above cannot be given local legal effect according to their terms,
+reviewing courts shall apply local law that most closely approximates
+an absolute waiver of all civil liability in connection with the
+Program, unless a warranty or assumption of liability accompanies a
+copy of the Program in return for a fee.
+
+                     END OF TERMS AND CONDITIONS
+
+            How to Apply These Terms to Your New Programs
+
+  If you develop a new program, and you want it to be of the greatest
+possible use to the public, the best way to achieve this is to make it
+free software which everyone can redistribute and change under these terms.
+
+  To do so, attach the following notices to the program.  It is safest
+to attach them to the start of each source file to most effectively
+state the exclusion of warranty; and each file should have at least
+the "copyright" line and a pointer to where the full notice is found.
+
+    <one line to give the program's name and a brief idea of what it does.>
+    Copyright (C) <year>  <name of author>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+Also add information on how to contact you by electronic and paper mail.
+
+  If the program does terminal interaction, make it output a short
+notice like this when it starts in an interactive mode:
+
+    <program>  Copyright (C) <year>  <name of author>
+    This program comes with ABSOLUTELY NO WARRANTY; for details type `show w'.
+    This is free software, and you are welcome to redistribute it
+    under certain conditions; type `show c' for details.
+
+The hypothetical commands `show w' and `show c' should show the appropriate
+parts of the General Public License.  Of course, your program's commands
+might be different; for a GUI interface, you would use an "about box".
+
+  You should also get your employer (if you work as a programmer) or school,
+if any, to sign a "copyright disclaimer" for the program, if necessary.
+For more information on this, and how to apply and follow the GNU GPL, see
+<http://www.gnu.org/licenses/>.
+
+  The GNU General Public License does not permit incorporating your program
+into proprietary programs.  If your program is a subroutine library, you
+may consider it more useful to permit linking proprietary applications with
+the library.  If this is what you want to do, use the GNU Lesser General
+Public License instead of this License.  But first, please read
+<http://www.gnu.org/philosophy/why-not-lgpl.html>.
+
+
+Bundled build information
+FFmpeg 64-bit static Windows build from www.gyan.dev
+
+Version: 2026-10-25-git-46f23be8b1-full_build-www.gyan.dev
+
+License: GPL v3
+
+Source Code: https://github.com/FFmpeg/FFmpeg/commit/46f23be8b1
+
+External Assets
+frei0r plugins:   https://www.gyan.dev/ffmpeg/builds/ffmpeg-frei0r-plugins
+lensfun database: https://www.gyan.dev/ffmpeg/builds/ffmpeg-lensfun-db
+whisper models:   https://huggingface.co/ggerganov/whisper.cpp/tree/main
+
+git-full build configuration: 
+
+ARCH                      x86 (generic)
+big-endian                no
+runtime cpu detection     yes
+standalone assembly       yes
+x86 assembler             nasm
+MMX enabled               yes
+MMXEXT enabled            yes
+SSE enabled               yes
+SSSE3 enabled             yes
+AESNI enabled             yes
+CLMUL enabled             yes
+AVX enabled               yes
+AVX2 enabled              yes
+AVX-512 enabled           yes
+AVX-512ICL enabled        yes
+XOP enabled               yes
+FMA3 enabled              yes
+FMA4 enabled              yes
+i686 features enabled     yes
+CMOV is fast              yes
+EBX available             yes
+6 registers available     yes
+7 registers available     yes
+debug symbols             yes
+strip symbols             yes
+optimize for size         no
+optimizations             yes
+static                    yes
+shared                    no
+network support           yes
+threading support         pthreads
+safe bitstream reader     yes
+texi2html enabled         no
+perl enabled              yes
+pod2man enabled           yes
+makeinfo enabled          yes
+makeinfo supports HTML    yes
+experimental features     yes
+xmllint enabled           yes
+
+External libraries:
+avisynth                libgsm                  libsvtjpegxs
+bzlib                   libharfbuzz             libtheora
+cairo                   libilbc                 libtwolame
+chromaprint             libjxl                  libuavs3d
+frei0r                  liblc3                  libvidstab
+gmp                     liblensfun              libvmaf
+gnutls                  libmodplug              libvo_amrwbenc
+iconv                   libmp3lame              libvorbis
+ladspa                  libmysofa               libvpx
+lcms2                   liboapv                 libvvenc
+libaom                  libopencore_amrnb       libwebp
+libaribb24              libopencore_amrwb       libx264
+libaribcaption          libopenjpeg             libx265
+libass                  libopenmpt              libxavs2
+libbluray               libopus                 libxevd
+libbs2b                 libplacebo              libxeve
+libcaca                 libqrencode             libxml2
+libcdio                 libquirc                libxvid
+libcodec2               librav1e                libzimg
+libdav1d                librist                 libzmq
+libdavs2                librubberband           libzvbi
+libdvdnav               libshine                lzma
+libdvdread              libsnappy               mediafoundation
+libflite                libsoxr                 openal
+libfontconfig           libspeex                sdl2
+libfreetype             libsrt                  whisper
+libfribidi              libssh                  zlib
+libgme                  libsvtav1
+
+External libraries providing hardware acceleration:
+amf                     d3d12va                 nvdec
+cuda                    dxva2                   nvenc
+cuda_llvm               ffnvcodec               opencl
+cuvid                   libmfx                  vaapi
+d3d11va                 libvpl                  vulkan
+
+Libraries:
+avcodec                 avformat                swscale
+avdevice                avutil
+avfilter                swresample
+
+Programs:
+ffmpeg                  ffplay                  ffprobe
+
+Enabled decoders:
+aac                     flv                     pcm_u24be
+aac_fixed               fmvc                    pcm_u24le
+aac_latm                fourxm                  pcm_u32be
+aasc                    fraps                   pcm_u32le
+ac3                     frwu                    pcm_u8
+ac3_fixed               ftr                     pcm_vidc
+acelp_kelvin            g2m                     pcx
+adpcm_4xm               g723_1                  pdv
+adpcm_adx               g728                    pfm
+adpcm_afc               g729                    pgm
+adpcm_agm               gdv                     pgmyuv
+adpcm_aica              gem                     pgssub
+adpcm_argo              gif                     pgx
+adpcm_circus            gremlin_dpcm            phm
+adpcm_ct                gsm                     photocd
+adpcm_dtk               gsm_ms                  pictor
+adpcm_ea                h261                    pixlet
+adpcm_ea_maxis_xa       h263                    pjs
+adpcm_ea_r1             h263i                   png
+adpcm_ea_r2             h263p                   ppm
+adpcm_ea_r3             h264                    prores
+adpcm_ea_xas            h264_amf                prores_raw
+adpcm_g722              h264_cuvid              prosumer
+adpcm_g726              h264_qsv                psd
+adpcm_g726le            hap                     ptx
+adpcm_ima_acorn         hca                     qcelp
+adpcm_ima_alp           hcom                    qdm2
+adpcm_ima_amv           hdr                     qdmc
+adpcm_ima_apc           hevc                    qdraw
+adpcm_ima_apm           hevc_amf                qoa
+adpcm_ima_citrix        hevc_cuvid              qoi
+adpcm_ima_cunning       hevc_qsv                qpeg
+adpcm_ima_dat4          hnm4_video              qtrle
+adpcm_ima_dk3           hq_hqa                  r10k
+adpcm_ima_dk4           hqx                     r210
+adpcm_ima_ea_eacs       huffyuv                 ra_144
+adpcm_ima_ea_sead       hymt                    ra_288
+adpcm_ima_escape        iac                     ralf
+adpcm_ima_hvqm2         idcin                   rasc
+adpcm_ima_hvqm4         idf                     rawvideo
+adpcm_ima_iss           iff_ilbm                realtext
+adpcm_ima_magix         ilbc                    rka
+adpcm_ima_moflex        imc                     rl2
+adpcm_ima_mtf           imm4                    roq
+adpcm_ima_oki           imm5                    roq_dpcm
+adpcm_ima_pda           imm6                    rpza
+adpcm_ima_qt            indeo2                  rscc
+adpcm_ima_rad           indeo3                  rtv1
+adpcm_ima_smjpeg        indeo4                  rv10
+adpcm_ima_ssi           indeo5                  rv20
+adpcm_ima_wav           interplay_acm           rv30
+adpcm_ima_ws            interplay_dpcm          rv40
+adpcm_ima_xbox          interplay_video         rv60
+adpcm_ms                ipu                     rw2
+adpcm_mtaf              jacosub                 s302m
+adpcm_n64               jpeg2000                sami
+adpcm_psx               jpegls                  sanm
+adpcm_psxc              jv                      sbc
+adpcm_rhetorex          kgv1                    scpr
+adpcm_sanyo             kmvc                    screenpresso
+adpcm_sbpro_2           lagarith                sdx2_dpcm
+adpcm_sbpro_3           lead                    sga
+adpcm_sbpro_4           libaom_av1              sgi
+adpcm_swf               libaribb24              sgirle
+adpcm_thp               libaribcaption          sheervideo
+adpcm_thp_le            libcodec2               shorten
+adpcm_vima              libdav1d                simbiosis_imx
+adpcm_xa                libdavs2                sipr
+adpcm_xmd               libgsm                  siren
+adpcm_yamaha            libgsm_ms               smackaud
+adpcm_zork              libilbc                 smacker
+agm                     libjxl                  smc
+ahx                     libjxl_anim             smvjpeg
+aic                     liblc3                  snow
+alac                    libopencore_amrnb       sol_dpcm
+alias_pix               libopencore_amrwb       sp5x
+als                     libopus                 speedhq
+amrnb                   libspeex                speex
+amrwb                   libsvtjpegxs            srgc
+amv                     libuavs3d               srt
+anm                     libvorbis               ssa
+ansi                    libvpx_vp8              stl
+anull                   libvpx_vp9              subrip
+apac                    libxevd                 subviewer
+ape                     libzvbi_teletext        subviewer1
+apng                    loco                    sunrast
+aptx                    lscr                    svq1
+aptx_hd                 m101                    svq3
+apv                     mace3                   tak
+arbc                    mace6                   targa
+argo                    magicyuv                targa_y216
+ass                     mdec                    tdsc
+asv1                    media100                text
+asv2                    metasound               theora
+atrac1                  microdvd                thp
+atrac3                  mimic                   tiertexseqvideo
+atrac3al                misc4                   tiff
+atrac3p                 mjpeg                   tmv
+atrac3pal               mjpeg_cuvid             truehd
+atrac9                  mjpeg_qsv               truemotion1
+aura                    mjpegb                  truemotion2
+aura2                   mlp                     truemotion2rt
+av1                     mmvideo                 truespeech
+av1_amf                 mobiclip                tscc
+av1_cuvid               motionpixels            tscc2
+av1_qsv                 movtext                 tta
+avrn                    mp1                     twinvq
+avrp                    mp1float                txd
+avs                     mp2                     ulti
+avui                    mp2float                utvideo
+bethsoftvid             mp3                     v210
+bfi                     mp3adu                  v210x
+bink                    mp3adufloat             vb
+binkaudio_dct           mp3float                vble
+binkaudio_rdft          mp3on4                  vbn
+bintext                 mp3on4float             vc1
+bitpacked               mpc7                    vc1_cuvid
+bmp                     mpc8                    vc1_qsv
+bmv_audio               mpeg1_cuvid             vc1image
+bmv_video               mpeg1video              vcr1
+bonk                    mpeg2_cuvid             vmdaudio
+brender_pix             mpeg2_qsv               vmdvideo
+c93                     mpeg2video              vmix
+cavs                    mpeg4                   vmnc
+cbd2_dpcm               mpeg4_cuvid             vnull
+ccaption                mpegvideo               vorbis
+cdgraphics              mpl2                    vp3
+cdtoons                 msa1                    vp4
+cdxl                    mscc                    vp5
+cfhd                    msmpeg4v1               vp6
+cinepak                 msmpeg4v2               vp6a
+clearvideo              msmpeg4v3               vp6f
+cljr                    msnsiren                vp7
+cllc                    msp2                    vp8
+comfortnoise            msrle                   vp8_cuvid
+cook                    mss1                    vp8_qsv
+cpia                    mss2                    vp9
+cri                     msvideo1                vp9_amf
+cscd                    mszh                    vp9_cuvid
+cyuv                    mts2                    vp9_qsv
+dca                     mv30                    vplayer
+dds                     mvc1                    vqa
+derf_dpcm               mvc2                    vqc
+dfa                     mvdv                    vvc
+dfpwm                   mvha                    vvc_qsv
+dirac                   mwsc                    wady_dpcm
+dnxhd                   mxpeg                   wavarc
+dolby_e                 nellymoser              wavpack
+dpx                     notchlc                 wbmp
+dsd_lsbf                nuv                     wcmv
+dsd_lsbf_planar         on2avc                  webp
+dsd_msbf                opus                    webp_anim
+dsd_msbf_planar         osq                     webvtt
+dsicinaudio             paf_audio               wmalossless
+dsicinvideo             paf_video               wmapro
+dss_sp                  pam                     wmav1
+dst                     pbm                     wmav2
+dvaudio                 pcm_alaw                wmavoice
+dvbsub                  pcm_bluray              wmv1
+dvdsub                  pcm_dvd                 wmv2
+dvvideo                 pcm_dvda                wmv3
+dxa                     pcm_f16le               wmv3image
+dxtory                  pcm_f24le               wnv1
+dxv                     pcm_f32be               wrapped_avframe
+eac3                    pcm_f32le               ws_snd1
+eacmv                   pcm_f64be               xan_dpcm
+eamad                   pcm_f64le               xan_wc3
+eatgq                   pcm_lxf                 xan_wc4
+eatgv                   pcm_mulaw               xbin
+eatqi                   pcm_s16be               xbm
+eightbps                pcm_s16be_planar        xface
+eightsvx_exp            pcm_s16le               xl
+eightsvx_fib            pcm_s16le_planar        xma1
+escape124               pcm_s24be               xma2
+escape130               pcm_s24daud             xpm
+evrc                    pcm_s24le               xsub
+exr                     pcm_s24le_planar        xwd
+fastaudio               pcm_s32be               y41p
+ffv1                    pcm_s32le               ylc
+ffvhuff                 pcm_s32le_planar        yop
+ffwavesynth             pcm_s64be               yuv4
+fic                     pcm_s64le               zero12v
+fits                    pcm_s8                  zerocodec
+flac                    pcm_s8_planar           zlib
+flashsv                 pcm_sga                 zmbv
+flashsv2                pcm_u16be
+flic                    pcm_u16le
+
+Enabled encoders:
+a64multi                hevc_amf                pcm_s24le_planar
+a64multi5               hevc_d3d12va            pcm_s32be
+aac                     hevc_mf                 pcm_s32le
+aac_mf                  hevc_nvenc              pcm_s32le_planar
+ac3                     hevc_qsv                pcm_s64be
+ac3_fixed               hevc_vaapi              pcm_s64le
+ac3_mf                  hevc_vulkan             pcm_s8
+adpcm_adx               huffyuv                 pcm_s8_planar
+adpcm_argo              jpeg2000                pcm_u16be
+adpcm_g722              jpegls                  pcm_u16le
+adpcm_g726              libaom_av1              pcm_u24be
+adpcm_g726le            libcodec2               pcm_u24le
+adpcm_ima_alp           libgsm                  pcm_u32be
+adpcm_ima_amv           libgsm_ms               pcm_u32le
+adpcm_ima_apm           libilbc                 pcm_u8
+adpcm_ima_qt            libjxl                  pcm_vidc
+adpcm_ima_ssi           libjxl_anim             pcx
+adpcm_ima_wav           liblc3                  pdv
+adpcm_ima_ws            libmp3lame              pfm
+adpcm_ms                liboapv                 pgm
+adpcm_swf               libopencore_amrnb       pgmyuv
+adpcm_yamaha            libopenjpeg             phm
+alac                    libopus                 png
+alias_pix               librav1e                ppm
+amv                     libshine                prores
+anull                   libspeex                prores_aw
+apng                    libsvtav1               prores_ks
+aptx                    libsvtjpegxs            prores_ks_vulkan
+aptx_hd                 libtheora               qoi
+apv_vulkan              libtwolame              qtrle
+ass                     libvo_amrwbenc          r10k
+asv1                    libvorbis               r210
+asv2                    libvpx_vp8              ra_144
+av1_amf                 libvpx_vp9              rawvideo
+av1_d3d12va             libvvenc                roq
+av1_mf                  libwebp                 roq_dpcm
+av1_nvenc               libwebp_anim            rpza
+av1_qsv                 libx264                 rv10
+av1_vaapi               libx264rgb              rv20
+av1_vulkan              libx265                 s302m
+avrp                    libxavs2                sbc
+avui                    libxeve                 sgi
+bitpacked               libxvid                 smc
+bmp                     ljpeg                   snow
+cfhd                    magicyuv                speedhq
+cinepak                 mjpeg                   srt
+cljr                    mjpeg_qsv               ssa
+comfortnoise            mjpeg_vaapi             subrip
+dca                     mlp                     sunrast
+dfpwm                   movtext                 svq1
+dnxhd                   mp2                     targa
+dpx                     mp2fixed                text
+dsd_msbf                mp3_mf                  tiff
+dvbsub                  mpeg1video              truehd
+dvdsub                  mpeg2_qsv               tta
+dvvideo                 mpeg2_vaapi             ttml
+dxv                     mpeg2video              utvideo
+eac3                    mpeg4                   v210
+exr                     msmpeg4v2               vbn
+ffv1                    msmpeg4v3               vc2
+ffv1_vulkan             msrle                   vnull
+ffvhuff                 msvideo1                vorbis
+fits                    nellymoser              vp8_vaapi
+flac                    opus                    vp9_qsv
+flashsv                 pam                     vp9_vaapi
+flashsv2                pbm                     wavpack
+flv                     pcm_alaw                wbmp
+g723_1                  pcm_bluray              webvtt
+gif                     pcm_dvd                 wmav1
+h261                    pcm_f32be               wmav2
+h263                    pcm_f32le               wmv1
+h263p                   pcm_f64be               wmv2
+h264_amf                pcm_f64le               wrapped_avframe
+h264_d3d12va            pcm_mulaw               xbm
+h264_mf                 pcm_s16be               xface
+h264_nvenc              pcm_s16be_planar        xsub
+h264_qsv                pcm_s16le               xwd
+h264_vaapi              pcm_s16le_planar        y41p
+h264_vulkan             pcm_s24be               yuv4
+hap                     pcm_s24daud             zlib
+hdr                     pcm_s24le               zmbv
+
+Enabled hwaccels:
+apv_vulkan              hevc_nvdec              vc1_nvdec
+av1_d3d11va             hevc_nvdec_cuarray      vc1_nvdec_cuarray
+av1_d3d11va2            hevc_vaapi              vc1_vaapi
+av1_d3d12va             hevc_vulkan             vp8_nvdec
+av1_dxva2               mjpeg_nvdec             vp8_nvdec_cuarray
+av1_nvdec               mjpeg_vaapi             vp8_vaapi
+av1_nvdec_cuarray       mpeg1_nvdec             vp9_d3d11va
+av1_vaapi               mpeg1_nvdec_cuarray     vp9_d3d11va2
+av1_vulkan              mpeg2_d3d11va           vp9_d3d12va
+dpx_vulkan              mpeg2_d3d11va2          vp9_dxva2
+ffv1_vulkan             mpeg2_d3d12va           vp9_nvdec
+h263_vaapi              mpeg2_dxva2             vp9_nvdec_cuarray
+h264_d3d11va            mpeg2_nvdec             vp9_vaapi
+h264_d3d11va2           mpeg2_nvdec_cuarray     vp9_vulkan
+h264_d3d12va            mpeg2_vaapi             vvc_vaapi
+h264_dxva2              mpeg4_nvdec             wmv3_d3d11va
+h264_nvdec              mpeg4_nvdec_cuarray     wmv3_d3d11va2
+h264_nvdec_cuarray      mpeg4_vaapi             wmv3_d3d12va
+h264_vaapi              prores_raw_vulkan       wmv3_dxva2
+h264_vulkan             prores_vulkan           wmv3_nvdec
+hevc_d3d11va            vc1_d3d11va             wmv3_nvdec_cuarray
+hevc_d3d11va2           vc1_d3d11va2            wmv3_vaapi
+hevc_d3d12va            vc1_d3d12va
+hevc_dxva2              vc1_dxva2
+
+Enabled parsers:
+aac                     dvdsub                  mpegaudio
+aac_latm                evc                     mpegvideo
+ac3                     ffv1                    opus
+adx                     flac                    png
+ahx                     ftr                     pnm
+amr                     g723_1                  prores
+apv                     g729                    prores_raw
+av1                     gif                     qoi
+avs2                    gsm                     rv34
+avs3                    h261                    rw2
+bmp                     h263                    sbc
+cavsvideo               h264                    sipr
+cook                    hdr                     tak
+cri                     hevc                    vc1
+dca                     ipu                     vorbis
+dirac                   jpeg2000                vp3
+dnxhd                   jpegxl                  vp8
+dnxuc                   jpegxs                  vp9
+dolby_e                 lcevc                   vvc
+dpx                     misc4                   webp
+dvaudio                 mjpeg                   xbm
+dvbsub                  mlp                     xma
+dvd_nav                 mpeg4video              xwd
+
+Enabled demuxers:
+aa                      idf                     pcm_f64be
+aac                     iff                     pcm_f64le
+aax                     ifv                     pcm_mulaw
+ac3                     ilbc                    pcm_s16be
+ac4                     image2                  pcm_s16le
+ace                     image2_alias_pix        pcm_s24be
+acm                     image2_brender_pix      pcm_s24le
+act                     image2pipe              pcm_s32be
+adf                     image_bmp_pipe          pcm_s32le
+adp                     image_cri_pipe          pcm_s8
+ads                     image_dds_pipe          pcm_u16be
+adx                     image_dpx_pipe          pcm_u16le
+aea                     image_exr_pipe          pcm_u24be
+afc                     image_gem_pipe          pcm_u24le
+aiff                    image_gif_pipe          pcm_u32be
+aix                     image_hdr_pipe          pcm_u32le
+alp                     image_j2k_pipe          pcm_u8
+amr                     image_jpeg_pipe         pcm_vidc
+amrnb                   image_jpegls_pipe       pdv
+amrwb                   image_jpegxl_pipe       pjs
+anm                     image_jpegxs_pipe       pmp
+apac                    image_pam_pipe          pp_bnk
+apc                     image_pbm_pipe          pva
+ape                     image_pcx_pipe          pvf
+apm                     image_pfm_pipe          qcp
+apng                    image_pgm_pipe          qoa
+aptx                    image_pgmyuv_pipe       r3d
+aptx_hd                 image_pgx_pipe          rawvideo
+apv                     image_phm_pipe          rcwt
+aqtitle                 image_photocd_pipe      realtext
+argo_asf                image_pictor_pipe       redspark
+argo_brp                image_png_pipe          rka
+argo_cvg                image_ppm_pipe          rl2
+asf                     image_psd_pipe          rm
+ass                     image_qdraw_pipe        roq
+ast                     image_qoi_pipe          rpl
+astc                    image_rw2_pipe          rsd
+au                      image_sgi_pipe          rso
+av1                     image_sunrast_pipe      rtp
+avi                     image_svg_pipe          rtsp
+avisynth                image_tiff_pipe         s337m
+avr                     image_vbn_pipe          sami
+avs                     image_webp_pipe         sap
+avs2                    image_xbm_pipe          sbc
+avs3                    image_xpm_pipe          sbg
+bethsoftvid             image_xwd_pipe          scc
+bfi                     imf                     scd
+bfstm                   ingenient               sdns
+bink                    ipmovie                 sdp
+binka                   ipu                     sdr2
+bintext                 ircam                   sds
+bit                     iss                     sdx
+bitpacked               iv8                     segafilm
+bmv                     ivf                     ser
+boa                     ivr                     sga
+bonk                    jacosub                 shorten
+brstm                   jpeg_mpf                siff
+c93                     jpegxl_anim             simbiosis_imx
+caf                     jv                      sln
+cavsvideo               ktx                     smacker
+cdg                     kux                     smjpeg
+cdxl                    kvag                    smush
+cine                    laf                     sol
+codec2                  lc3                     sox
+codec2raw               libgme                  spdif
+concat                  libmodplug              srt
+dash                    libopenmpt              stl
+data                    live_flv                str
+daud                    lmlm4                   subviewer
+dcstr                   loas                    subviewer1
+derf                    lrc                     sup
+dfa                     luodat                  svag
+dfpwm                   lvf                     svs
+dhav                    lxf                     swf
+dirac                   m4v                     tak
+dnxhd                   matroska                tedcaptions
+dsf                     mca                     thp
+dsicin                  mcc                     threedostr
+dss                     mgsts                   tiertexseq
+dts                     microdvd                tmv
+dtshd                   mjpeg                   truehd
+dv                      mjpeg_2000              tta
+dvbsub                  mlp                     tty
+dvbtxt                  mlv                     txd
+dvdvideo                mm                      ty
+dxa                     mmf                     usm
+ea                      mods                    v210
+ea_cdata                moflex                  v210x
+eac3                    mov                     vag
+epaf                    mp3                     vc1
+evc                     mpc                     vc1t
+ffmetadata              mpc8                    vividas
+filmstrip               mpegps                  vivo
+fits                    mpegts                  vmd
+flac                    mpegtsraw               vobsub
+flic                    mpegvideo               voc
+flv                     mpjpeg                  vpk
+fourxm                  mpl2                    vplayer
+frm                     mpsub                   vqf
+fsb                     msf                     vvc
+fwse                    msnwc_tcp               w64
+g722                    msp                     wady
+g723_1                  mtaf                    wav
+g726                    mtv                     wavarc
+g726le                  musx                    wc3
+g728                    mv                      webm_dash_manifest
+g729                    mvi                     webp_anim
+gdv                     mvr                     webvtt
+genh                    mxf                     wsaud
+gif                     mxg                     wsd
+gsm                     nc                      wsvqa
+gxf                     nistsphere              wtv
+h261                    nsp                     wv
+h263                    nsv                     wve
+h264                    nut                     xa
+hca                     nuv                     xbin
+hcom                    obu                     xmd
+hevc                    ogg                     xmv
+hls                     oma                     xvag
+hnm                     osq                     xwma
+hxvs                    paf                     yop
+iamf                    pcm_alaw                yuv4mpegpipe
+ico                     pcm_f32be
+idcin                   pcm_f32le
+
+Enabled muxers:
+a64                     h263                    pcm_s16be
+ac3                     h264                    pcm_s16le
+ac4                     hash                    pcm_s24be
+adts                    hds                     pcm_s24le
+adx                     hevc                    pcm_s32be
+aea                     hls                     pcm_s32le
+aiff                    iamf                    pcm_s8
+alp                     ico                     pcm_u16be
+amr                     ilbc                    pcm_u16le
+amv                     image2                  pcm_u24be
+apm                     image2pipe              pcm_u24le
+apng                    ipod                    pcm_u32be
+aptx                    ircam                   pcm_u32le
+aptx_hd                 ismv                    pcm_u8
+apv                     iterm2                  pcm_vidc
+argo_asf                ivf                     pdv
+argo_cvg                jacosub                 psp
+asf                     jpeg_mpf                rawvideo
+asf_stream              ktx                     rcwt
+ass                     kvag                    rm
+ast                     latm                    roq
+astc                    lc3                     rso
+au                      lrc                     rtp
+avi                     m4v                     rtp_mpegts
+avif                    matroska                rtsp
+avm2                    matroska_audio          sap
+avs2                    mcc                     sbc
+avs3                    md5                     scc
+bit                     microdvd                segafilm
+caf                     mjpeg                   segment
+cavsvideo               mkvtimestamp_v2         smjpeg
+chromaprint             mlp                     smoothstreaming
+codec2                  mmf                     sox
+codec2raw               mov                     spdif
+crc                     mp2                     spx
+dash                    mp3                     srt
+data                    mp4                     stream_segment
+daud                    mpeg1system             streamhash
+dfpwm                   mpeg1vcd                sup
+dirac                   mpeg1video              swf
+dnxhd                   mpeg2dvd                tee
+dts                     mpeg2svcd               tg2
+dv                      mpeg2video              tgp
+eac3                    mpeg2vob                truehd
+evc                     mpegts                  tta
+f4v                     mpjpeg                  ttml
+ffmetadata              mxf                     uncodedframecrc
+fifo                    mxf_d10                 vc1
+filmstrip               mxf_opatom              vc1t
+fits                    null                    voc
+flac                    nut                     vvc
+flv                     obu                     w64
+framecrc                oga                     wav
+framehash               ogg                     webm
+framemd5                ogv                     webm_chunk
+g722                    oma                     webm_dash_manifest
+g723_1                  opus                    webp
+g726                    pcm_alaw                webvtt
+g726le                  pcm_f32be               whip
+gif                     pcm_f32le               wsaud
+gsm                     pcm_f64be               wtv
+gxf                     pcm_f64le               wv
+h261                    pcm_mulaw               yuv4mpegpipe
+
+Enabled protocols:
+async                   httpproxy               rtmps
+bluray                  https                   rtmpt
+cache                   icecast                 rtmpte
+concat                  ipfs_gateway            rtmpts
+concatf                 ipns_gateway            rtp
+crypto                  librist                 shared
+data                    libsrt                  srtp
+dtls                    libssh                  subfile
+fd                      libzmq                  tcp
+ffrtmpcrypt             md5                     tee
+ffrtmphttp              mmsh                    tls
+file                    mmst                    udp
+ftp                     pipe                    udplite
+gopher                  prompeg                 windows_handle
+gophers                 rtmp
+http                    rtmpe
+
+Enabled filters:
+a3dscope                dedot                   perlin
+aap                     deesser                 perms
+abench                  deflate                 perspective
+abitscope               deflicker               phase
+acompressor             deinterlace_d3d12       photosensitivity
+acontrast               deinterlace_qsv         pixdesctest
+acopy                   deinterlace_vaapi       pixelize
+acrossfade              dejudder                pixscope
+acrossover              delogo                  pp7
+acrusher                denoise_vaapi           premultiply
+acue                    deshake                 premultiply_dynamic
+addroi                  deshake_opencl          prewitt
+adeclick                despill                 prewitt_opencl
+adeclip                 detelecine              procamp_vaapi
+adecorrelate            dialoguenhance          program_opencl
+adelay                  dilation                pseudocolor
+adenorm                 dilation_opencl         psnr
+aderivative             displace                pullup
+adrawgraph              doubleweave             qp
+adrc                    drawbox                 qrencode
+adynamicequalizer       drawbox_vaapi           qrencodesrc
+adynamicsmooth          drawgraph               quirc
+aecho                   drawgrid                random
+aemphasis               drawtext                readeia608
+aeval                   drawvg                  readvitc
+aevalsrc                drmeter                 realtime
+aexciter                dynaudnorm              remap
+afade                   earwax                  remap_opencl
+afdelaysrc              ebur128                 removegrain
+afftdn                  edgedetect              removelogo
+afftfilt                elbg                    repeatfields
+afir                    entropy                 replaygain
+afireqsrc               epx                     reverse
+afirsrc                 eq                      rgbashift
+aformat                 equalizer               rgbtestsrc
+afreqshift              erosion                 roberts
+afwtdn                  erosion_opencl          roberts_opencl
+agate                   estdif                  rotate
+agraphmonitor           exposure                rubberband
+ahistogram              extractplanes           sab
+aiir                    extrastereo             scale
+aintegral               fade                    scale2ref
+ainterleave             feedback                scale_cuda
+alatency                fftdnoiz                scale_d3d11
+alimiter                fftfilt                 scale_d3d12
+allpass                 field                   scale_qsv
+allrgb                  fieldhint               scale_vaapi
+allyuv                  fieldmatch              scale_vulkan
+aloop                   fieldorder              scdet
+alphaextract            fillborders             scdet_vulkan
+alphamerge              find_rect               scharr
+amerge                  firequalizer            scroll
+ametadata               flanger                 segment
+amf_capture             flip_vulkan             select
+amix                    flite                   selectivecolor
+amovie                  floodfill               sendcmd
+amplify                 format                  separatefields
+amultiply               fps                     setdar
+anequalizer             framepack               setfield
+anlmdn                  framerate               setparams
+anlmf                   framestep               setpts
+anlms                   frc_amf                 setrange
+anoisesrc               freezedetect            setsar
+anull                   freezeframes            settb
+anullsink               frei0r                  sharpness_vaapi
+anullsrc                frei0r_src              shear
+apad                    fruc_vulkan             showcqt
+aperms                  fspp                    showcwt
+aphasemeter             fsync                   showfreqs
+aphaser                 gainmap                 showinfo
+aphaseshift             gblur                   showpalette
+apsnr                   gblur_vulkan            showspatial
+apsyclip                geq                     showspectrum
+apulsator               gfxcapture              showspectrumpic
+arealtime               gradfun                 showvolume
+aresample               gradients               showwaves
+areverse                graphmonitor            showwavespic
+arls                    grayworld               shuffleframes
+arnndn                  greyedge                shufflepixels
+asdr                    guided                  shuffleplanes
+asegment                haas                    sidechaincompress
+aselect                 haldclut                sidechaingate
+asendcmd                haldclutsrc             sidedata
+asetnsamples            hdcd                    sierpinski
+asetpts                 headphone               signalstats
+asetrate                hflip                   signature
+asettb                  hflip_vulkan            silencedetect
+ashowinfo               highpass                silenceremove
+asidedata               highshelf               sinc
+asisdr                  hilbert                 sine
+asoftclip               histeq                  siti
+aspectralstats          histogram               smartblur
+asplit                  hqdn3d                  smptebars
+ass                     hqx                     smptehdbars
+astats                  hstack                  sobel
+astreamselect           hstack_qsv              sobel_opencl
+asubboost               hstack_vaapi            sofalizer
+asubcut                 hsvhold                 spectrumsynth
+asupercut               hsvkey                  speechnorm
+asuperpass              hue                     split
+asuperstop              huesaturation           spp
+atadenoise              hwdownload              sr_amf
+atempo                  hwmap                   ssim
+atilt                   hwupload                ssim360
+atrim                   hwupload_cuda           stereo3d
+avectorscope            hysteresis              stereotools
+avgblur                 iccdetect               stereowiden
+avgblur_opencl          iccgen                  streamselect
+avgblur_vulkan          identity                subtitles
+avsynctest              idet                    super2xsai
+axcorrelate             il                      superequalizer
+azmq                    inflate                 surround
+backgroundkey           interlace               swaprect
+bandpass                interlace_vulkan        swapuv
+bandreject              interleave              tblend
+bass                    join                    telecine
+bbox                    kerndeint               testsrc
+bench                   kirsch                  testsrc2
+bilateral               ladspa                  thistogram
+bilateral_cuda          lagfun                  threshold
+biquad                  latency                 thumbnail
+bitplanenoise           latticepal              thumbnail_cuda
+blackdetect             lenscorrection          tile
+blackdetect_vulkan      lensfun                 tiltandshift
+blackframe              libplacebo              tiltshelf
+blend                   libvmaf                 tinterlace
+blend_vulkan            life                    tlut2
+blockdetect             limitdiff               tmedian
+blurdetect              limiter                 tmidequalizer
+bm3d                    loop                    tmix
+boxblur                 loudnorm                tonemap
+boxblur_opencl          lowpass                 tonemap_opencl
+bs2b                    lowshelf                tonemap_vaapi
+bwdif                   lumakey                 tpad
+bwdif_cuda              lut                     transpose
+bwdif_vulkan            lut1d                   transpose_cuda
+cas                     lut2                    transpose_opencl
+ccrepack                lut3d                   transpose_vaapi
+cellauto                lutrgb                  transpose_vulkan
+channelmap              lutyuv                  treble
+channelsplit            mandelbrot              tremolo
+chorus                  maskedclamp             trim
+chromaber_vulkan        maskedmax               unpremultiply
+chromahold              maskedmerge             unsharp
+chromakey               maskedmin               unsharp_opencl
+chromakey_cuda          maskedthreshold         untile
+chromanr                maskfun                 uspp
+chromashift             mcdeint                 v360
+ciescope                mcompand                v360_vulkan
+codecview               median                  vaguedenoiser
+color                   mergeplanes             varblur
+color_vulkan            mestimate               vectorscope
+colorbalance            mestimate_d3d12         vflip
+colorchannelmixer       metadata                vflip_vulkan
+colorchart              midequalizer            vfrdet
+colorcontrast           minterpolate            vibrance
+colorcorrect            mix                     vibrato
+colordetect             monochrome              vidstabdetect
+colorhold               morpho                  vidstabtransform
+colorize                movie                   vif
+colorkey                mpdecimate              vignette
+colorkey_opencl         mptestsrc               virtualbass
+colorlevels             msad                    vmafmotion
+colormap                multiply                volume
+colormatrix             negate                  volumedetect
+colorspace              nlmeans                 vpp_amf
+colorspace_cuda         nlmeans_opencl          vpp_qsv
+colorspectrum           nlmeans_vulkan          vqe_amf
+colortemperature        nnedi                   vstack
+compand                 noformat                vstack_qsv
+compensationdelay       noise                   vstack_vaapi
+concat                  normalize               w3fdif
+convolution             null                    waveform
+convolution_opencl      nullsink                weave
+convolve                nullsrc                 whisper
+copy                    openclsrc               xbr
+corr                    oscilloscope            xcorrelate
+cover_rect              overlay                 xfade
+crop                    overlay_cuda            xfade_opencl
+cropdetect              overlay_opencl          xfade_vulkan
+crossfeed               overlay_qsv             xmedian
+crystalizer             overlay_vaapi           xpsnr
+cue                     overlay_vulkan          xstack
+curves                  owdenoise               xstack_qsv
+datascope               pad                     xstack_vaapi
+dblur                   pad_cuda                yadif
+dcshift                 pad_opencl              yadif_cuda
+dctdnoiz                pad_vaapi               yaepblur
+ddagrab                 pal100bars              yuvtestsrc
+deband                  pal75bars               zmq
+deblock                 palettegen              zoneplate
+decimate                paletteuse              zoompan
+deconvolve              pan                     zscale
+
+Enabled bsfs:
+aac_adtstoasc           h264_mp4toannexb        pgs_frame_merge
+ahx_to_mp2              h264_redundant_pps      prores_metadata
+apv_metadata            hapqa_extract           remove_extradata
+av1_frame_merge         hevc_metadata           setts
+av1_frame_split         hevc_mp4toannexb        showinfo
+av1_metadata            imx_dump_header         side_data
+chomp                   jpegapp                 smpte436m_to_eia608
+dca_core                lcevc_merge             text2movsub
+dovi_rpu                lcevc_metadata          trace_headers
+dovi_split              media100_to_mjpegb      trim
+dts2pts                 mjpeg2jpeg              truehd_core
+dump_extradata          mjpega_dump_header      vp9_metadata
+dv_error_marker         mov2textsub             vp9_raw_reorder
+eac3_core               mpeg2_metadata          vp9_superframe
+eia608_to_smpte436m     mpeg4_unpack_bframes    vp9_superframe_split
+evc_frame_merge         noise                   vvc_metadata
+extract_extradata       null                    vvc_mp4toannexb
+filter_units            opus_metadata
+h264_metadata           pcm_rechunk
+
+Enabled indevs:
+dshow                   lavfi                   openal
+gdigrab                 libcdio                 vfwcap
+
+Enabled outdevs:
+caca
+
+git-full external libraries' versions: 
+
+AMF                 v1.5.2-5-g57ee0cf
+aom                 v3.15.2-117-g9ace39e02a
+aribb24             v1.0.3-5-g5e9be27
+avisynth+           v3.7.5-619-gf176fd8d
+cairo               1.18.6-4-g74755964e
+chromaprint         1.6.2-1
+codec2              1.2.0-108-g310777b1
+dav1d               1.5.4-39-gb8b2d726
+davs2               1.7-1-gb41cf11
+dvdnav              7.0.0-18-g8147ccd
+dvdread             7.1.1-125-g0f30df5
+ffnvcodec           n13.1.15.0-4-gf205307
+flite               v2.2-55-g6c9f20d
+fontconfig          2.18.3
+freetype            VER-2-15-0
+frei0r              v1.5-463-g618dde7
+fribidi             v1.0.17-7-gd2f3e1f
+game-music-emu      0.6.3-249-gf68963b
+gnutls              3.8.13-3
+gsm                 1.0.24-1
+harfbuzz            15.0.0-2-g75d8ac5d
+ladspa-sdk          1.17-2
+lame                3.100-3
+lc3                 v1.1.3-11-gf9c127f
+lcms2               2.19.1-1
+lensfun             v0.3.2-3430-g68b5a4e7
+libaribcaption      v1.0.0-98-g37dde0f
+libass              0.17.5-11-gf61db56
+libbluray           1.5.1-4-gf33a738
+libbs2b             5ca2d59888
+libcaca             0.99.beta20-8
+libcdio-paranoia    10.2+2.0.2-2
+libilbc             v3.0.4-346-g6adb26d4a4
+libjxl              v0.12-snapshot-25-ge47d2a2b
+libmodplug          0.8.9.0-5
+libmysofa           v1.3.1-79-g648eed0
+libplacebo          v7.360.0-246-g1532bf6
+librist             v0.2.20-2-g47ad551
+libssh              0.12.2-1
+libvo-amrwbenc      v0.1.3-7-g884dd24
+libvpl              v2.17.0-1-g674d015
+libwebp             v1.6.0-362-g1844042
+libxml2             v2.15.0-134-gc79c9612
+ogg                 v1.3.6-7-g06a5e02
+openal-soft         4a52288b77
+openapv             v1.1.3.0
+opencl-headers      v2026.05.29-11-g82f6031
+opencl-loader       v2026.05.29-6-g5192c84
+opencore-amr        0.1.6-1
+openjpeg2           2.5.4-2
+openmpt             OpenMPT-1.32.11.00
+opus                v1.6.1-85-ga8b2545e
+qrencode            v4.0.0-rc3-102-g715e29f
+quirc               v1.2-7-g927d680
+rav1e               p20250624-8-g31435de
+rubberband          v4.0.0-2-ge4296ac
+SDL                 release-2.32.0-261-g8acf7cfc0
+shine               3.1.1-59-gab5e352
+snappy              1.3.1-1
+sox                 sox-14.4.2-184-gf3094754
+speex               Speex-1.2.1-57-gf461ff4
+srt                 v1.5.7-18-g9f23902
+SVT-AV1             v2.3.0-1395-gf2c3fb786
+SVT-JPEG-XS         v0.9.0-167-gf472020
+theora              v1.2.0alpha1-224-g28fd5ec
+twolame             0.4.0-3
+uavs3d              1.2
+vaapi               2.11.0.pre1-281-gf052e984
+vidstab             v1.1.0-291-ge2445c4
+vmaf                v3.2.1-68-gf712fa75
+vorbis              v1.3.7-37-g1b75110b
+vpx                 v1.17.0-85-g900b2a52b
+vulkan-loader       sdk-0.1.0-4108-g3172c485
+vvenc               v1.14.0-305-g0e7508b
+whisper             v1.9.5-134-g231638a0
+x264                0480cb05fa
+x265                4.3-73-g5143a2a0
+xavs2               1.4
+xevd                v0.8.0
+xeve                v0.7.1
+xvidcore            1.3.7-5
+zeromq              4.3.5-5
+zimg                release-3.0.6-253-g67e0603
+zvbi                v0.2.46
+

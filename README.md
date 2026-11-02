@@ -4,17 +4,25 @@
 
 ![Windows x64](https://img.shields.io/badge/platform-Windows_x64-0078D4)
 ![Tauri 2](https://img.shields.io/badge/Tauri-2-24C8DB)
-![Version 1.0.0](https://img.shields.io/badge/version-1.0.0-22C55E)
+![Version 1.1.0](https://img.shields.io/badge/version-1.1.0-22C55E)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-Turn anime episodes and other videos into compact **640 × 480 H.264/AAC MP4s** through a desktop interface built with Rust, Tauri 2, and TypeScript. Drop your files, review the subtitles, and let the encoder handle the queue.
+Turn anime episodes and other videos into configurable **SD H.264/AAC MP4s with Mod-16 SD presets** through a desktop interface built with Rust, Tauri 2, and TypeScript. Drop your files, review the subtitles, and let the encoder handle the queue.
 
 [Download for Windows](../../releases) · [User Guide](docs/USER_GUIDE.md) · [Changelog](CHANGELOG.md)
 
 ## Features
 
+- **Multi-file queue.** Drop videos or use Add video files, remove pending items,
+  and track sequential per-file status plus overall progress. Failed files retain
+  their error details while the queue continues. [Queue guide](docs/BATCH_QUEUE.md).
+
+- **Simple or Advanced Mode.** A three-step flow for everyday encoding, with persistent interface preferences and a collapsible panel for subtitles, naming, quality, and picture size. Returning to Simple restores the selected safe encoding preset while preserving your paths and naming.
+
 - **Fast GPU encoding with automatic fallback.** Detects and tests NVIDIA **NVENC**, AMD **AMF**, and Intel **Quick Sync (QSV)**, in that order. If no usable hardware encoder is available, it uses `libx264` with the `superfast` preset. A failed hardware encode can retry on the CPU.
-- **Wii-focused H.264 constraints.** Every encoder follows the same SD output limits: Baseline/Main Level 3.0, 8-bit 4:2:0 video, and at most 30 fps. Scaling preserves the source aspect ratio with padding.
+- **Wii-focused H.264 constraints.** Every encoder follows the same SD output limits: Main Level 3.1, 8-bit 4:2:0 video, and at most 30 fps. Scaling preserves the source aspect ratio with padding.
+- **Optional black-bar removal.** A bounded crop-detection pre-pass removes detected letterboxing/pillarboxing before scaling and subtitle burn-in, with an uncropped fallback. [Auto-crop guide](docs/AUTO_CROP.md).
+- **Flexible SD geometry.** Choose Auto, 4:3 CRT, or 16:9 display aspect, with 640x480, 848x480, 720x480 anamorphic, or even custom dimensions. [Aspect and resolution guide](docs/ASPECT_RATIO_AND_RESOLUTION.md).
 - **Fansub-friendly burn-in.** Supports **SRT, ASS, SSA, and VTT**, including UTF-8 normalization of supported legacy text encodings. Matches subtitles by filename or episode number, with a natural-order fallback.
 - **Smart drag-and-drop.** Drop individual files or mixed folders. The scanner routes media and subtitles to their fields and recognizes an empty folder as an output destination.
 - **Episode-aware filenames.** A single `Anime - 03.mkv` selection can become `Your Title - Ep03 [Wii].mp4`. Folder batches retain sequential numbering; leaving the title blank preserves the source stem with `_Wii` appended.
@@ -31,7 +39,7 @@ Subtitle rendering and scaling run on the CPU; the GPU handles final video encod
 1. Open **[GitHub Releases](../../releases)** and download the Windows x64 **setup `.exe`**.
 2. Run the installer. The per-machine installation requests administrator permission.
 3. Open **Keroro Wii Encoder** and select an input video or folder and a separate output folder. You can also drag and drop them.
-4. Review the subtitle selection, enter an optional anime title, and choose your quality and CPU usage settings.
+4. Choose a Wii preset in Simple Mode, or open Advanced Mode to review subtitles, naming, quality, and picture settings.
 5. Select **Preview First 10 Seconds**, then **Start Platoon Downscale**.
 
 **Requirements:** Windows x64, the Microsoft Edge WebView2 Runtime, and a compatible Wii homebrew media player for playback. A supported GPU is optional.
@@ -40,17 +48,46 @@ For a **portable release**, extract the complete package and keep the applicatio
 
 Test a preview and a finished episode on your Wii before converting a large collection. Compatibility depends on your media player and setup; desktop checks do not certify physical Wii playback. See the [playback checklist](docs/WII_PLAYBACK_CHECKLIST.md).
 
+## Windows Security / SmartScreen Notice
+
+Keroro Wii Encoder is a free, open-source project. We do not currently use a paid commercial code-signing certificate, and the Windows installer is unsigned. Microsoft Defender SmartScreen may therefore display **"Windows protected your PC"**, especially when a release is new and has not established download or publisher reputation. This warning alone is not a malware detection.
+
+The application's source code is publicly available for inspection, review, and building from source. Media processing stays on your computer, with no application telemetry. Download installers only from this repository's **[GitHub Releases](../../releases)** page.
+
+If you downloaded the installer from the official release page and trust the project:
+
+1. Click **More info** in the SmartScreen dialog.
+2. Click **Run anyway** to start the installer.
+3. Follow the setup wizard and approve the administrator permission prompt if you wish to install.
+
+These instructions apply to SmartScreen's **unrecognized-app** warning, not an antivirus malware alert. If **Run anyway** is unavailable, Windows security settings or your organization's policies may prevent it; do not disable your security protections to force installation.
+
+For background, see [Microsoft's SmartScreen documentation](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation).
+
+## Automatic Updates
+
+Updater support is prepared for signed releases. Once the maintainer supplies the
+public signing key and publishes the update feed, release builds check GitHub in
+the background at startup and download available updates. A subtle update-ready
+notice offers **Restart Now** when no encoding job is active; updates never
+automatically interrupt a job. Windows may
+still request UAC approval for a per-machine update.
+
+See [automatic update setup](docs/AUTOMATIC_UPDATES.md) for signing, publication,
+and restart behavior. Update checks/downloads require a network connection;
+media processing remains local, with no telemetry.
+
 ## Output Profile
 
 | Setting | Output |
 | --- | --- |
 | Container | MP4 with fast-start metadata |
-| Video | H.264 Baseline; Main when using AMD AMF |
-| H.264 level / pixel format | Level 3.0 / `yuv420p` |
-| Resolution | 640 × 480, aspect-ratio-preserving padding |
-| Frame rate | At most 30 fps |
-| Video rate control | 2 Mbps VBV maximum rate; 4 Mb buffer |
-| Audio | AAC-LC, stereo, 160 kbps, 44.1 kHz |
+| Video | H.264 Main (all encoders) |
+| H.264 level / pixel format | Level 3.1 / `yuv420p` |
+| Resolution | 640x480, 720x480 anamorphic, 848x480, or custom even SD dimensions |
+| Frame rate | At most 30 fps; 848x480 retains a conservative 25 fps cap |
+| Video rate control | 3.2 Mbps VBV maximum rate; 6 Mb buffer |
+| Audio | AAC-LC, stereo, 160 kbps, 48 kHz |
 
 **Video inputs:** MP4, MKV, AVI, MOV, WMV, FLV, and WebM.
 

@@ -107,7 +107,7 @@ async fn all_supported_containers_transcode_to_wii_mp4() {
             video["profile"].as_str(),
             Some("Constrained Baseline" | "Baseline" | "Main")
         ));
-        assert_eq!(video["level"], 30);
+        assert_eq!(video["level"], 31);
         assert_eq!(video["width"], 640);
         assert_eq!(video["height"], 480);
         assert_eq!(video["pix_fmt"], "yuv420p");
@@ -151,6 +151,7 @@ async fn directory() -> PathBuf {
 }
 fn settings(input: &Path, output: &Path, subtitles: Option<&Path>) -> Settings {
     Settings {
+        video: Default::default(),
         input_dir: input.to_string_lossy().into_owned(),
         output_dir: output.to_string_lossy().into_owned(),
         crf: 23,
@@ -269,7 +270,7 @@ async fn preview_and_batch_burn_srt_ass_and_use_episode_order() {
         .output()
         .expect("preview audio");
     assert!(audio.status.success());
-    assert_eq!(String::from_utf8_lossy(&audio.stdout).trim(), "aac,44100,2");
+    assert_eq!(String::from_utf8_lossy(&audio.stdout).trim(), "aac,48000,2");
     let probe = Command::new(&tools.ffprobe)
         .args([
             "-v",
@@ -847,4 +848,185 @@ async fn ssa_vtt_syntax_errors_and_oversized_subtitles_are_isolated() {
         keroro_encoder_core::subtitles::MAX_SUBTITLE_BYTES + 1
     );
     fs::remove_dir_all(root).await.expect("cleanup");
+}
+
+#[tokio::test]
+#[ignore = "Requires bundled FFmpeg/ffprobe paths"]
+async fn aspect_presets_preserve_display_shape_burn_subtitles_and_obey_main31() {
+    use keroro_encoder_core::{AspectRatio as A, ResolutionPreset as R};
+    let tools = tools();
+    let root = directory().await;
+    let anamorphic = root.join("Ep01.mkv");
+    let square = root.join("Ep02.mkv");
+    make_video(
+        &tools,
+        &anamorphic,
+        "color=c=red:size=720x480:rate=60:duration=2,setsar=32/27",
+    );
+    make_video(
+        &tools,
+        &square,
+        "color=c=red:size=320x240:rate=60:duration=2",
+    );
+    let sub = root.join("subtitle.srt");
+    fs::write(
+        &sub,
+        "1\n00:00:00,000 --> 00:00:01,900\nASPECT SUBTITLE TEST\n",
+    )
+    .await
+    .expect("subtitle");
+    for (name, input, aspect, preset, w, h, dar, black_top, black_side) in [
+        (
+            "crt",
+            &anamorphic,
+            A::Standard,
+            R::Standard,
+            640,
+            480,
+            4.0 / 3.0,
+            true,
+            false,
+        ),
+        (
+            "wide",
+            &square,
+            A::Wide,
+            R::Wide,
+            848,
+            480,
+            16.0 / 9.0,
+            false,
+            true,
+        ),
+        (
+            "dvd",
+            &anamorphic,
+            A::Wide,
+            R::Anamorphic,
+            720,
+            480,
+            16.0 / 9.0,
+            false,
+            false,
+        ),
+        (
+            "auto",
+            &anamorphic,
+            A::Auto,
+            R::Standard,
+            640,
+            480,
+            16.0 / 9.0,
+            false,
+            false,
+        ),
+        (
+            "custom",
+            &anamorphic,
+            A::Standard,
+            R::Custom,
+            704,
+            400,
+            4.0 / 3.0,
+            true,
+            false,
+        ),
+        (
+            "auto-wide",
+            &square,
+            A::Auto,
+            R::Wide,
+            848,
+            480,
+            4.0 / 3.0,
+            false,
+            false,
+        ),
+    ] {
+        let output = root.join(name);
+        let mut config = settings(input, &output, Some(&sub));
+        config.video.aspect_ratio = aspect;
+        config.video.resolution_preset = preset;
+        config.video.custom_width = w;
+        config.video.custom_height = h;
+        let geometry = config.video.clone();
+        let queue = BatchPlan::prepare(format!("aspect-{name}"), config)
+            .await
+            .expect("queue");
+        let result = run_batch(queue, tools.clone(), Cancellation::new(), |_| {}).await;
+        assert_eq!(
+            result.phase,
+            Phase::Succeeded,
+            "{name}: {:?}",
+            result.errors
+        );
+        assert!(result.measurements.expect("stats").subtitle_applied);
+        let episode = if input == &anamorphic { 1 } else { 2 };
+        let file = output.join(format!("Sgt Keroro - Ep{episode:02} [Wii].mp4"));
+        let metadata = Command::new(&tools.ffprobe)
+            .args([
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_streams",
+                "-of",
+                "json",
+            ])
+            .arg(&file)
+            .output()
+            .expect("probe");
+        assert!(metadata.status.success());
+        let json: serde_json::Value = serde_json::from_slice(&metadata.stdout).expect("json");
+        let video = &json["streams"][0];
+        assert_eq!(video["width"], w);
+        assert_eq!(video["height"], h);
+        assert_eq!(video["level"], 31);
+        let (a, b) = video["display_aspect_ratio"]
+            .as_str()
+            .expect("DAR")
+            .split_once(':')
+            .expect("ratio");
+        let actual =
+            a.parse::<f64>().expect("DAR numerator") / b.parse::<f64>().expect("DAR denominator");
+        assert!((actual - dar).abs() < 0.002, "{name}: DAR {actual}");
+        let (a, b) = video["avg_frame_rate"]
+            .as_str()
+            .expect("fps")
+            .split_once('/')
+            .expect("fps ratio");
+        let fps =
+            a.parse::<f64>().expect("fps numerator") / b.parse::<f64>().expect("fps denominator");
+        assert!(fps <= geometry.max_fps().expect("budget") as f64 + 0.01);
+        let frame = Command::new(&tools.ffmpeg)
+            .args(["-v", "error", "-ss", "0.5", "-i"])
+            .arg(&file)
+            .args(["-frames:v", "1", "-pix_fmt", "rgb24", "-f", "rawvideo", "-"])
+            .output()
+            .expect("frame");
+        assert!(frame.status.success());
+        assert_eq!(frame.stdout.len(), (w * h * 3) as usize);
+        let pixel = |x: u32, y: u32| {
+            &frame.stdout[((y * w + x) * 3) as usize..((y * w + x) * 3 + 3) as usize]
+        };
+        let is_black = |p: &[u8]| p.iter().all(|v| *v < 25);
+        assert_eq!(is_black(pixel(w / 2, 2)), black_top, "{name}: top padding");
+        assert_eq!(
+            is_black(pixel(2, h / 2)),
+            black_side,
+            "{name}: side padding"
+        );
+        assert!(
+            frame
+                .stdout
+                .chunks_exact(3)
+                .filter(|p| p.iter().all(|v| *v > 180))
+                .count()
+                > 30,
+            "{name}: subtitles not visible"
+        );
+    }
+    fs::remove_dir_all(root)
+        .await
+        .expect("cleanup geometry fixtures");
 }

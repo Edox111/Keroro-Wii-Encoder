@@ -3,6 +3,7 @@ mod commands;
 mod execution;
 mod lifecycle;
 mod state;
+mod updates;
 
 pub use keroro_encoder_core::ActiveProcess;
 use lifecycle::{request_close, show_main};
@@ -24,7 +25,12 @@ pub fn run() {
         .manage(BatchManager::default())
         .manage(Arc::new(ActiveProcess::default()))
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
+            updates::updater_is_configured,
+            updates::prepare_update_install,
+            updates::release_update_install,
             commands::pause_encode,
             commands::resume_encode,
             commands::analyze_dropped_paths,

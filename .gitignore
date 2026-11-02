@@ -74,3 +74,11 @@ $RECYCLE.BIN/
 # Keep package-lock.json, Cargo.lock, source assets, installer icons,
 # and src-tauri/binaries/ sidecars and licenses eligible for version control.
 "src-tauri/binaries/" 
+
+# Private updater signing keys; public .pub files may be committed
+*.key
+/.tauri-private/
+
+src-tauri/binaries/*.exe
+
+src-tauri/binaries/*.exe

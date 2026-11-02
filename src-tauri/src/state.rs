@@ -23,6 +23,7 @@ pub(super) struct RuntimeState {
     pub(super) preview: Option<PreviewFile>,
     pub(super) close_prompt_open: bool,
     pub(super) exiting: bool,
+    pub(super) updating: bool,
     pub(super) minimize_on_close: bool,
     pub(super) tray_percent: Option<u8>,
 }
@@ -34,6 +35,7 @@ impl Default for RuntimeState {
             preview: None,
             close_prompt_open: false,
             exiting: false,
+            updating: false,
             minimize_on_close: true,
             tray_percent: None,
         }
@@ -54,6 +56,19 @@ pub(super) struct JobReservation {
     finished: watch::Sender<bool>,
 }
 impl BatchManager {
+    pub(super) fn begin_update(&self) -> Result<bool, String> {
+        let mut state = self.0.lock().map_err(|e| e.to_string())?;
+        if state.active.is_some() || state.close_prompt_open || state.exiting || state.updating {
+            return Ok(false);
+        }
+        state.updating = true;
+        Ok(true)
+    }
+    pub(super) fn end_update(&self) -> Result<(), String> {
+        self.0.lock().map_err(|e| e.to_string())?.updating = false;
+        Ok(())
+    }
+
     pub(super) fn control_pause(
         &self,
         job_id: &str,
@@ -99,8 +114,9 @@ impl BatchManager {
         let (finished, receiver) = watch::channel(false);
         {
             let mut state = self.0.lock().map_err(|e| e.to_string())?;
-            if state.active.is_some() || state.close_prompt_open || state.exiting {
-                return Err("An encoding task or close confirmation is already active.".into());
+            if state.active.is_some() || state.close_prompt_open || state.exiting || state.updating
+            {
+                return Err("An encoding task, update installation, or close confirmation is already active.".into());
             }
             state.active = Some(ActiveTask {
                 job_id: job_id.clone(),
@@ -245,6 +261,33 @@ mod tests {
                 .control_pause("active", true, || panic!("cancelled process"))
                 .is_err()
         );
+    }
+
+    #[test]
+    fn updater_defers_active_jobs_and_blocks_new_jobs_until_released() {
+        let manager = BatchManager::default();
+        let job = manager
+            .reserve("active".into(), Cancellation::new())
+            .expect("job");
+        assert!(!manager.begin_update().expect("deferred"));
+        drop(job);
+        assert!(manager.begin_update().expect("installation lock"));
+        assert!(!manager.begin_update().expect("duplicate update"));
+        assert!(
+            manager
+                .reserve("blocked".into(), Cancellation::new())
+                .is_err()
+        );
+        manager.end_update().expect("unlock after failure");
+        let retry = manager
+            .reserve("retry".into(), Cancellation::new())
+            .expect("reusable");
+        drop(retry);
+        manager.0.lock().expect("state").close_prompt_open = true;
+        assert!(!manager.begin_update().expect("close prompt"));
+        manager.0.lock().expect("state").close_prompt_open = false;
+        manager.0.lock().expect("state").exiting = true;
+        assert!(!manager.begin_update().expect("exiting"));
     }
 
     #[test]

@@ -279,7 +279,7 @@ label {
   font-weight: 500;
 }
 
-input[type="text"] {
+input[type="text"], input[type="number"] {
   width: 100%;
   padding: 7px 10px;
   background: rgba(15, 23, 42, 0.6);
@@ -291,7 +291,7 @@ input[type="text"] {
   transition: border-color 0.2s;
 }
 
-input[type="text"]:focus {
+input[type="text"]:focus, input[type="number"]:focus {
   outline: none;
   border-color: var(--accent-color);
   box-shadow: 0 0 8px var(--accent-color);
@@ -316,16 +316,18 @@ input[type="text"]:focus {
 .settings-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 12px;
+  gap: 8px;
   background: rgba(15, 23, 42, 0.5);
-  padding: 8px 10px;
+  padding: 6px 10px;
   border-radius: 10px;
   margin-bottom: 8px;
   flex: 0 0 auto;
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.settings-grid > .input-group { min-width: 0; margin-bottom: 0; }
+.settings-grid > .input-group { min-width: 0; margin-bottom: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px; }
+.settings-grid > .input-group label { margin: 0; white-space: nowrap; }
+.settings-grid select { min-width: 0; }
 .performance-text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.75rem; line-height: 1.5; margin: 8px 0; }
 
 select {
@@ -402,8 +404,10 @@ select:focus {
   border-radius: 8px;
   font-family: 'Consolas', monospace;
   font-size: 0.82rem;
-  flex: 1 1 0;
-  min-height: 56px;
+  flex: 1 1 150px;
+  min-height: 0;
+  height: auto;
+  max-height: none;
   min-width: 0;
   overflow-x: hidden;
   overflow-y: auto;
@@ -529,7 +533,7 @@ input[type="checkbox"] {
   .card { padding: 9px 12px; }
   .card > .input-group { margin-bottom: 3px; }
   label { margin-bottom: 2px; }
-  input[type="text"] { padding-top: 6px; padding-bottom: 6px; }
+  input[type="text"], input[type="number"] { padding-top: 6px; padding-bottom: 6px; }
   .quality-setting { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px; }
   .quality-setting label { margin: 0; white-space: nowrap; }
   .quality-setting select { min-width: 0; }
@@ -540,7 +544,7 @@ input[type="checkbox"] {
   .preferences-row { margin-top: 6px; }
   .preferences-row label { font-size: 0.75rem; }
   .preferences-row .secondary-btn { padding: 5px 8px; }
-  .status-box { margin-top: 7px; padding: 8px; }
+  .status-box { margin-top: 7px; padding: 8px; min-height: 36px; }
 }
 
 #drag-overlay {
@@ -577,3 +581,7 @@ input[type="checkbox"] {
 .primary-btn.resume-btn:disabled { background: #166534; box-shadow: none; }
 
 .encoding-paused .progress-bar { animation-play-state: paused !important; }
+
+.custom-size { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.custom-size .input-group { margin: 0; min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px; }
+.custom-size label { margin: 0; white-space: nowrap; }

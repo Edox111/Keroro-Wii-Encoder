@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 pub mod artifacts;
 pub mod atomic_file;
 mod cancel;
+pub mod crop;
 mod diagnostics;
 pub mod drop_scan;
 pub mod environment;
@@ -21,8 +22,10 @@ mod records;
 pub mod session;
 pub mod subtitles;
 mod validation;
+pub mod video;
 pub use process_state::ActiveProcess;
 pub use records::Measurements as EncodingMeasurements;
+pub use video::{AspectRatio, ResolutionPreset, VideoSettings};
 pub mod media;
 pub use cancel::Cancellation;
 use std::{
@@ -74,6 +77,8 @@ pub struct Settings {
     pub input_dir: String,
     pub output_dir: String,
     pub crf: u8,
+    #[serde(default)]
+    pub video: VideoSettings,
     #[serde(default)]
     pub cpu_mode: CpuMode,
     #[serde(default)]
@@ -197,6 +202,7 @@ impl BatchPlan {
         mut settings: Settings,
         kind: TaskKind,
     ) -> Result<Self, String> {
+        settings.video.validate()?;
         offline::local_path(Path::new(&settings.input_dir))?;
         offline::local_path(Path::new(&settings.output_dir))?;
         if let Some(path) = &settings.subtitle_dir {
@@ -594,7 +600,20 @@ async fn encode_item(
             duration
         };
         if let Some(warning)=validation::projected_fat32_warning(duration) { update(ItemUpdate::Warning(warning)); }
-        let mut filter = String::from(profile::VIDEO_FILTER);
+        let crop = if settings.video.auto_crop {
+            match crop::detect(tools, &item.input, source.duration, cancellation, processes).await {
+                Ok(crop) => {
+                    log::info!("Auto-crop for {}: {:?}", item.input.display(), crop);
+                    crop
+                }
+                Err(error) => {
+                    if cancellation.is_cancelled() { return Err("Encoding cancelled.".into()); }
+                    log::warn!("Crop detection unavailable; retaining original frame: {error}");
+                    None
+                }
+            }
+        } else { None };
+        let mut filter = settings.video.filter_with_crop(crop)?;
         if let Some(source) = &item.subtitle {
             match subtitles::read_scoped(source, item.subtitle_root.as_deref()).await {
                 Ok(decoded) => {
@@ -661,7 +680,7 @@ async fn encode_item(
         if kind == TaskKind::Preview {
             command.args(["-t", "10"]);
         }
-        profile::configure(&mut command, &filter, encoder, settings.crf, &threads);
+        profile::configure(&mut command, &filter, encoder, settings.crf, &threads, settings.video.max_fps()?);
         let mut child = command
             .arg(&temp)
             .stdin(Stdio::piped())
@@ -787,7 +806,7 @@ async fn encode_item(
         // Release the exited encoder (and its subtitle staging) before tracking ffprobe.
         drop(child);
         processes.wait_until_idle().await;
-        let validated = validation::validate(tools, &temp, duration, source.has_audio, cancellation, processes).await.map_err(|error|format!("OUTPUT_VALIDATION_FAILED: {error}"))?;
+        let validated = validation::validate(tools, &temp, duration, source.has_audio, cancellation, processes, &settings.video).await.map_err(|error|format!("OUTPUT_VALIDATION_FAILED: {error}"))?;
         let verify_request=request.clone(); let verify_item=item.clone(); let verify_settings=settings.clone();
         session::blocking(move || verify_request.unchanged(&verify_item, &verify_settings)).await?;
         let mut warnings = Vec::new();
@@ -1050,7 +1069,8 @@ pub async fn run_batch_with_session(
             publish(state.clone());
         }
         if selected_encoder.is_none() {
-            selected_encoder = Some(hardware::detect(&tools, &cancellation, &processes).await);
+            selected_encoder = Some(hardware::detect_requested(&tools, &cancellation, &processes,
+                plan.settings.video.encoder_override).await);
         }
         let mut encoder = selected_encoder.unwrap_or(hardware::VideoEncoder::Cpu);
         state.encoder = Some(encoder.name().into());
@@ -1239,6 +1259,7 @@ mod tests {
             let plan = BatchPlan::prepare(
                 "single-file".into(),
                 Settings {
+                    video: Default::default(),
                     input_dir: video.to_string_lossy().into_owned(),
                     output_dir: output.to_string_lossy().into_owned(),
                     subtitle_dir: Some(sub.to_string_lossy().into_owned()),
@@ -1282,6 +1303,7 @@ mod tests {
         let plan = BatchPlan::prepare(
             "folder".into(),
             Settings {
+                video: Default::default(),
                 input_dir: input.to_string_lossy().into_owned(),
                 output_dir: output.to_string_lossy().into_owned(),
                 subtitle_dir: None,
@@ -1300,6 +1322,7 @@ mod tests {
         let input = root.path().join("input");
         std::fs::create_dir(&input).expect("input");
         let mut settings = Settings {
+            video: Default::default(),
             input_dir: String::new(),
             output_dir: root.path().join("output").to_string_lossy().into_owned(),
             subtitle_dir: None,

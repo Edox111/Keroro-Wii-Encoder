@@ -1,14 +1,19 @@
+import { defaultVideo, normalizeVideoSettings, type VideoSettings } from "./video";
 export const themes = ["keroro", "tamama", "giroro", "kururu", "dororo"] as const;
 export type Theme = typeof themes[number];
 export function isTheme(value: unknown): value is Theme {
   return typeof value === "string" && themes.some((theme) => theme === value);
 }
 export interface Preferences {
+  uiMode: "simple" | "advanced";
+  simplePreset: "classic" | "widescreen" | "fastest";
+  showLogs: boolean;
   selectedTheme: Theme;
   isMuted: boolean;
   minimizeToTrayOnClose: boolean;
   defaultCrf: 20 | 23 | 26;
   cpuMode: "balanced" | "maximum";
+  video: VideoSettings;
   subtitleFolderOverridden: boolean;
   lastInputFolder: string;
   lastOutputFolder: string;
@@ -17,11 +22,13 @@ export interface Preferences {
 }
 const key = "keroro.preferences.v1";
 const defaults: Preferences = {
+  uiMode: "simple", simplePreset: "classic", showLogs: false,
+  video: { ...defaultVideo },
   selectedTheme: "keroro", isMuted: false, minimizeToTrayOnClose: true, defaultCrf: 23, cpuMode: "maximum", subtitleFolderOverridden: false,
   lastInputFolder: "", lastOutputFolder: "", lastSubtitleFolder: "", animeTitle: "",
 };
 function load(): Preferences {
-  const result = { ...defaults };
+  const result = { ...defaults, video: { ...defaultVideo } };
   try {
     const legacyTheme = localStorage.getItem("keroro.theme");
     if (isTheme(legacyTheme)) result.selectedTheme = legacyTheme;
@@ -29,6 +36,10 @@ function load(): Preferences {
     const raw: unknown = JSON.parse(localStorage.getItem(key) ?? "null");
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) return result;
     const value = raw as Record<string, unknown>;
+    if (value.uiMode === "simple" || value.uiMode === "advanced") result.uiMode = value.uiMode;
+    if (value.simplePreset === "classic" || value.simplePreset === "widescreen" || value.simplePreset === "fastest") result.simplePreset = value.simplePreset;
+    if (typeof value.showLogs === "boolean") result.showLogs = value.showLogs;
+    result.video = normalizeVideoSettings(value.video) ?? result.video;
     if (isTheme(value.selectedTheme)) result.selectedTheme = value.selectedTheme;
     if (value.cpuMode === "balanced" || value.cpuMode === "maximum") result.cpuMode = value.cpuMode;
     if (typeof value.isMuted === "boolean") result.isMuted = value.isMuted;
@@ -46,7 +57,7 @@ function load(): Preferences {
   return result;
 }
 let preferences = load();
-export function getPreferences(): Readonly<Preferences> { return { ...preferences }; }
+export function getPreferences(): Readonly<Preferences> { return { ...preferences, video: { ...preferences.video } }; }
 export function savePreferences(patch: Partial<Preferences>): boolean {
   preferences = { ...preferences, ...patch };
   try { localStorage.setItem(key, JSON.stringify(preferences)); return true; }

@@ -1,5 +1,42 @@
 # Keroro Wii Encoder User Guide
 
+## Simple and Advanced Mode
+
+Version 1.1.0 opens in Simple Mode unless you previously chose Advanced Mode.
+Use the header switch; the app remembers your choice.
+
+Simple Mode presents three steps: **Input File**, **Pick Wii Preset**, and
+**Start Encoding**. Drop a single video or an input folder into the app; the
+existing Browse button selects folders. Choose an output folder separately.
+
+- **Classic CRT (4:3):** 640x480, 4:3 display aspect, quality 23, Full Throttle.
+- **Wii Widescreen (16:9):** 720x480 anamorphic, 16:9 display aspect, quality 23,
+  Full Throttle. This recommended widescreen raster allows up to 30 fps.
+- **Fastest Encode (Hardware Accelerated):** 640x480, 4:3, quality 26,
+  Full Throttle. Available GPUs are detected by the original backend when a job
+  starts; a compatible GPU is optional because CPU fallback remains available.
+
+Advanced Mode reveals a collapsible panel under Step 2 with the original
+subtitle, naming, quality, CPU usage, aspect, resolution, and custom-size fields.
+The diagnostic-display checkbox shows statistics and performance details;
+warnings and errors remain accessible regardless of that checkbox. Collection
+and local logging continue when details are hidden.
+
+Returning to Simple Mode resets video dimensions, aspect, quality, and CPU
+usage to the last explicitly selected preset. Input/output/subtitle paths and
+anime-title naming are preserved. Mode and preset changes are locked while an
+encode, preview, or update installation is active; theme controls stay available.
+
+Advanced Mode offers an optional **Auto-Crop Black Bars** checkbox and a video
+encoder selector. Auto tries NVIDIA, AMD, Intel, then CPU. A manually selected GPU
+is tested before use and falls back to CPU if unavailable. CPU selects libx264.
+Crop detection samples two seconds at minute one (the opening for shorter clips),
+then removes detected borders before resizing and external subtitle burn-in.
+If detection is inconclusive or fails, the original frame is retained. Use a
+preview to check the result; one sample cannot represent every scene.
+Returning to Simple Mode disables crop and restores automatic encoder selection.
+See [auto-crop details](AUTO_CROP.md).
+
 ## Starting a conversion
 
 1. Select an **Input Anime Folder** and an **Output Wii Folder**. Use different folders.
@@ -14,6 +51,14 @@ With a custom title, selecting a single video preserves a confident source episo
 Drop up to 64 local files or folders onto the window. The scanner inspects up to the first 512 entries in each folder, without searching subfolders. Its first eligible media folder fills the input field; its first completely empty folder fills the output field. A dedicated subtitle folder is preferred over a mixed media/subtitle folder; otherwise the first eligible subtitle folder is used. Dropping an individual video or subtitle retains that exact file path. A single video input encodes only that file; a subtitle file input uses that file, while a subtitle folder is searched for a match. A folder containing even a hidden file or subfolder is not empty. Drops fill fields but do not start encoding.
 
 The scanner supports MP4, MKV, AVI, MOV, WMV, FLV, and WebM video, and SRT, ASS, SSA, and VTT subtitles. If an entry is not found within the scan limit, select the folder manually. Your explicit subtitle-folder override is preserved when only a media folder is dropped.
+
+## Aspect ratio and resolution
+
+Select the stored resolution and display aspect independently. Existing preferences
+default to 640x480 and 4:3. Auto preserves the source display shape; explicit
+4:3/16:9 fits it with padding. Custom dimensions round to even values (ties upward), within the SD limits.
+See the [aspect and resolution guide](ASPECT_RATIO_AND_RESOLUTION.md), including
+anamorphic 720x480 and the conservative 25 fps cap for 848x480.
 
 ## Subtitle pairing
 

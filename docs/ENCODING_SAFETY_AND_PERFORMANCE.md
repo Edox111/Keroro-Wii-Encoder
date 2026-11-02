@@ -22,8 +22,10 @@ after a crash do not cause finished episodes to be overwritten.
 
 After the encoder exits successfully, the managed child is reaped before a
 bounded ffprobe subprocess inspects the `.part` file. Checks cover MP4, H.264
-Baseline/Main Level 3.0 or lower, 640x480 yuv420p video at no more than 30 fps,
-AAC-LC stereo/44.1 kHz audio when present, expected source-audio presence, a
+Main Level 3.1, the selected SD raster and explicit display
+aspect when configured, yuv420p video within the conservative frame-rate
+budget (at most 30 fps; 25 fps for 848x480),
+AAC-LC stereo/48 kHz audio when present, expected source-audio presence, a
 positive duration, and substantial duration discrepancies. The source and
 subtitle fingerprints are checked again before committing.
 

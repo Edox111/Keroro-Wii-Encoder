@@ -1,4 +1,5 @@
 //! Probe compiled encoders and real driver availability, in preferred GPU order.
+use crate::video::EncoderPreference;
 use crate::{ActiveProcess, Cancellation, Tools, diagnostics, process, profile};
 use std::{process::Stdio, sync::Arc, time::Duration};
 use tokio::{io::AsyncReadExt, process::Command};
@@ -82,7 +83,16 @@ pub async fn detect(
     cancel: &Cancellation,
     processes: &Arc<ActiveProcess>,
 ) -> VideoEncoder {
-    if cancel.is_cancelled() {
+    detect_requested(tools, cancel, processes, EncoderPreference::Auto).await
+}
+
+pub async fn detect_requested(
+    tools: &Tools,
+    cancel: &Cancellation,
+    processes: &Arc<ActiveProcess>,
+    requested: EncoderPreference,
+) -> VideoEncoder {
+    if cancel.is_cancelled() || requested == EncoderPreference::Cpu {
         return VideoEncoder::Cpu;
     }
     let mut command = process(&tools.ffmpeg);
@@ -95,6 +105,15 @@ pub async fn detect(
         }
     };
     for encoder in candidates(&listing) {
+        if !matches!(
+            (requested, encoder),
+            (EncoderPreference::Auto, _)
+                | (EncoderPreference::Nvenc, VideoEncoder::Nvenc)
+                | (EncoderPreference::Amf, VideoEncoder::Amf)
+                | (EncoderPreference::Qsv, VideoEncoder::Qsv)
+        ) {
+            continue;
+        }
         if cancel.is_cancelled() {
             break;
         }
@@ -108,7 +127,7 @@ pub async fn detect(
             "-i",
             "color=c=black:s=640x480:r=30:d=0.1",
         ]);
-        profile::configure(&mut command, profile::VIDEO_FILTER, encoder, 23, "0");
+        profile::configure(&mut command, profile::VIDEO_FILTER, encoder, 23, "0", 30);
         command.args(["-frames:v", "2", "-an", "-f", "null", "-"]);
         match probe(command, cancel, processes).await {
             Ok(_) => {
@@ -160,7 +179,14 @@ mod tests {
             "-i",
             "color=c=black:s=640x480:r=30:d=0.1",
         ]);
-        profile::configure(&mut cpu, profile::VIDEO_FILTER, VideoEncoder::Cpu, 23, "0");
+        profile::configure(
+            &mut cpu,
+            profile::VIDEO_FILTER,
+            VideoEncoder::Cpu,
+            23,
+            "0",
+            30,
+        );
         cpu.args(["-frames:v", "2", "-an", "-f", "null", "-"]);
         probe(cpu, &cancel, &processes)
             .await
@@ -186,6 +212,17 @@ mod tests {
             ffprobe: "unused.exe".into(),
         };
         assert_eq!(detect(&tools, &cancel, &processes).await, VideoEncoder::Cpu);
+        assert!(processes.0.lock().expect("slot").is_none());
+        assert_eq!(
+            detect_requested(
+                &tools,
+                &Cancellation::new(),
+                &processes,
+                EncoderPreference::Cpu
+            )
+            .await,
+            VideoEncoder::Cpu
+        );
         assert!(processes.0.lock().expect("slot").is_none());
     }
 

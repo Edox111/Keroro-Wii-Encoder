@@ -31,6 +31,7 @@ async fn fixture_dir(label: &str) -> PathBuf {
 
 fn settings(input: &Path, output: &Path) -> Settings {
     Settings {
+        video: Default::default(),
         input_dir: input.to_string_lossy().into_owned(),
         output_dir: output.to_string_lossy().into_owned(),
         crf: 20,
@@ -205,7 +206,7 @@ async fn real_batch_reports_progress_continues_after_failure_and_preserves_outpu
     let metadata = String::from_utf8_lossy(&probe.stdout);
     for expected in [
         "codec_name=h264",
-        "level=30",
+        "level=31",
         "avg_frame_rate=24/1",
         "width=640",
         "height=480",
@@ -213,7 +214,7 @@ async fn real_batch_reports_progress_continues_after_failure_and_preserves_outpu
         "codec_name=aac",
         "profile=LC",
         "channels=2",
-        "sample_rate=44100",
+        "sample_rate=48000",
     ] {
         assert!(
             metadata.contains(expected),

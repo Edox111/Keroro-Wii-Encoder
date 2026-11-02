@@ -213,6 +213,7 @@ impl SessionStore {
         Ok(())
     }
     fn validate(checkpoint: &Checkpoint) -> Result<(), String> {
+        checkpoint.settings.video.validate()?;
         if checkpoint.version != 1
             || checkpoint.items.is_empty()
             || checkpoint.items.len() > 50_000
@@ -767,10 +768,24 @@ mod tests {
         value["settings"]
             .as_object_mut()
             .expect("settings")
+            .remove("video");
+        value["settings"]
+            .as_object_mut()
+            .expect("settings")
             .remove("cpuMode");
         crate::atomic_file::json(&path, &value).expect("old schema");
         let store = SessionStore::open(&state).expect("reopen");
         assert!(store.info().expect("info").expect("saved").can_resume);
+        assert_eq!(
+            store
+                .info()
+                .expect("info")
+                .expect("saved")
+                .settings
+                .expect("settings")
+                .video,
+            crate::VideoSettings::default()
+        );
         assert_eq!(
             store
                 .info()
@@ -805,6 +820,7 @@ mod tests {
         BatchPlan {
             job_id: job.into(),
             settings: Settings {
+                video: Default::default(),
                 input_dir: input.to_string_lossy().into_owned(),
                 output_dir: output.to_string_lossy().into_owned(),
                 subtitle_dir: None,

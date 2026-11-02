@@ -6,17 +6,21 @@
     <title>Keroro Wii Encoder</title>
     <link rel="icon" type="image/png" href="/assets/Icon.png" />
   </head>
-  <body data-theme="keroro">
+  <body data-theme="keroro" data-ui-mode="simple" data-show-logs="false">
     <div id="drag-overlay" hidden aria-hidden="true" role="status" aria-live="polite">
       <h2 id="drag-overlay-text">Drop Media Here</h2>
     </div>
     <div class="container">
       <header>
         <div class="header-heading">
-          <h1>Keroro Wii Encoder</h1>
+          <h1>Keroro Wii Encoder <span class="app-version">v1.1.0</span></h1>
         </div>
-        <p class="subtitle">Downscale your anime for Nintendo Wii playback (640x480) | F11 full screen</p>
-        
+        <p class="subtitle">Downscale your anime for Nintendo Wii playback | F11 full screen</p>
+        <div class="mode-switch" role="group" aria-label="Interface mode">
+          <button id="simpleModeBtn" type="button" aria-pressed="true" aria-controls="advancedPanel" disabled>Simple Mode</button>
+          <button id="advancedModeBtn" type="button" aria-pressed="false" aria-controls="advancedPanel" disabled>Advanced Mode</button>
+        </div>
+
         <div class="platoon-bar" role="group" aria-label="Character theme">
           <button type="button" class="platoon-btn" data-theme="keroro" aria-pressed="true" title="Sergeant Keroro">
             <span class="icon-wrapper" aria-hidden="true"><img id="icon-keroro" width="26" height="26" alt="" /></span>
@@ -41,17 +45,111 @@
         </div>
       </header>
 
-      <main class="card">
-        <div class="input-group">
-          <label for="inputFolder">Input Anime Folder:</label>
+      <main class="card" aria-label="Video encoding workflow">
+        <section class="flow-step input-step" aria-labelledby="inputStepHeading">
+          <h2 id="inputStepHeading" class="step-heading"><span class="step-number" aria-hidden="true">1</span> Input File</h2>
+          <div class="drop-zone"><div class="input-group">
+          <label for="inputFolder">Drop videos or a folder:</label>
           <div class="input-row">
             <input type="text" id="inputFolder" placeholder="C:\Users\YourName\Videos\RawAnime" />
-            <button id="browseInputBtn" class="secondary-btn">Browse</button>
+            <button id="browseInputBtn" class="secondary-btn">Browse folder</button>
           </div>
-          <p class="field-hint">Supported video containers: MP4, MKV, AVI, MOV, WMV, FLV, WebM. Output: MP4.</p>
+          <p class="field-hint">Drop multiple videos to build a queue. Browse selects an input folder.</p>
+          <button type="button" id="addFilesBtn" class="secondary-btn" disabled>Add video files</button>
+        </div></div>
+          <div class="input-group">
+          <label for="outputFolder">Save finished videos to:</label>
+          <div class="input-row">
+            <input type="text" id="outputFolder" placeholder="C:\Users\YourName\Videos\WiiOutput" />
+            <button id="browseOutputBtn" class="secondary-btn">Browse</button>
+          </div>
         </div>
+          <section id="fileQueue" hidden aria-label="Video file queue">
+            <div class="queue-actions"><span id="queueSummary" role="status"></span><button type="button" id="clearQueueBtn" class="secondary-btn" hidden>Clear Queue</button></div>
+            <ul id="queueList" class="queue-list" aria-label="Queued videos"></ul>
+          </section>
+        </section>
 
-        <div class="input-group">
+        <section class="flow-step preset-step" aria-labelledby="presetStepHeading">
+          <h2 id="presetStepHeading" class="step-heading"><span class="step-number" aria-hidden="true">2</span> Pick Wii Preset</h2>
+          <div class="preset-row">
+            <label for="simplePreset" class="sr-only">Wii encoding preset</label>
+            <select id="simplePreset" aria-describedby="simplePresetHint" disabled>
+              <option value="widescreen">Wii Widescreen (16:9)</option>
+              <option value="classic" selected>Classic CRT (4:3)</option>
+              <option value="fastest">Fastest Encode (Hardware Accelerated)</option>
+              <option value="custom" disabled>Custom advanced settings</option>
+            </select>
+            <span class="info-tip" tabindex="0" role="img" aria-label="NVIDIA NVENC, AMD AMF and Intel QSV encode video on a compatible GPU. The app checks availability and falls back to CPU encoding automatically." title="NVIDIA NVENC, AMD AMF and Intel QSV encode video on a compatible GPU. The app checks availability and falls back to CPU encoding automatically." data-tooltip="NVIDIA NVENC, AMD AMF and Intel QSV encode video on a compatible GPU. The app checks availability and falls back to CPU encoding automatically.">i</span>
+          </div>
+          <p id="simplePresetHint" class="field-hint" aria-live="polite">640x480 with a 4:3 display shape. A safe starting point for a CRT.</p>
+          <span class="wiimc-badge" title="Recommended aligned SD presets. Smooth playback still depends on source complexity, frame rate, storage, and WiiMC settings.">Optimized for WiiMC (720x480 / 640x480 Mod-16 Standards)</span>
+          <details id="advancedPanel" class="advanced-panel" hidden>
+            <summary>Advanced settings <span class="summary-hint">Subtitles, naming, quality and picture size</span></summary>
+            <div class="advanced-content">
+              <div class="settings-grid">
+          <div class="input-group quality-setting">
+            <label for="crfSelect">Quality: <span id="crfValue">23</span> <span class="info-tip" tabindex="0" role="img" aria-label="Lower quality numbers retain more detail and usually make larger files. Higher numbers make smaller files." title="Lower quality numbers retain more detail and usually make larger files. Higher numbers make smaller files." data-tooltip="Lower quality numbers retain more detail and usually make larger files. Higher numbers make smaller files.">i</span></label>
+            <select id="crfSelect">
+              <option value="20">20 - High Quality (Larger files)</option>
+              <option value="23" selected>23 - Standard Wii Balance (Recommended)</option>
+              <option value="26">26 - Compressed (Smallest files for SD)</option>
+            </select>
+          </div>
+
+          <div class="input-group cpu-setting">
+            <label for="cpuMode">CPU usage: <span class="info-tip" tabindex="0" role="img" aria-label="Full Throttle uses automatic threading. Background Mode leaves more room for other desktop tasks." title="Full Throttle uses automatic threading. Background Mode leaves more room for other desktop tasks." data-tooltip="Full Throttle uses automatic threading. Background Mode leaves more room for other desktop tasks.">i</span></label>
+            <select id="cpuMode" title="Background Mode reserves CPU capacity for desktop use. Full Throttle allows automatic full CPU threading.">
+              <option value="balanced">Background Mode</option>
+              <option value="maximum" selected>Full Throttle</option>
+            </select>
+          </div>
+          <div class="input-group aspect-setting">
+            <label for="aspectRatio">Aspect ratio: <span class="info-tip" tabindex="0" role="img" aria-label="DAR is the picture shape on your screen. Auto keeps the source shape; 4:3 suits CRTs and 16:9 suits widescreen TVs." title="DAR is the picture shape on your screen. Auto keeps the source shape; 4:3 suits CRTs and 16:9 suits widescreen TVs." data-tooltip="DAR is the picture shape on your screen. Auto keeps the source shape; 4:3 suits CRTs and 16:9 suits widescreen TVs.">i</span></label>
+            <select id="aspectRatio" title="Auto preserves the source display aspect. Explicit 4:3 or 16:9 fits the picture with padding, without stretching.">
+              <option value="auto">Auto (Keep Source)</option>
+              <option value="4:3" selected>4:3 (Standard CRT)</option>
+              <option value="16:9">16:9 (Widescreen)</option>
+            </select>
+          </div>
+          <div class="input-group resolution-setting">
+            <label for="resolutionPreset">Resolution:</label>
+            <select id="resolutionPreset" aria-describedby="resolutionHelp" title="720x480 uses anamorphic pixels for exact 16:9. 848x480 is Mod-16 with nearly square pixels; exact 16:9 uses SAR 160:159. Custom dimensions round to even numbers. Aspect can be overridden separately.">
+              <option value="720x480">720x480 - Widescreen 16:9</option>
+              <option value="640x480" selected>640x480 - Standard 4:3</option>
+              <option value="848x480">848x480 - Widescreen 16:9</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+            <span id="resolutionHelp" class="wiimc-badge settings-help">Optimized for WiiMC (720x480 / 640x480 Mod-16 Standards)</span>
+          <div id="customSize" class="custom-size" hidden>
+            <div class="input-group">
+              <label for="customWidth">Width:</label>
+              <input id="customWidth" type="number" min="2" max="854" step="2" value="640" required />
+            </div>
+            <div class="input-group">
+              <label for="customHeight">Height:</label>
+              <input id="customHeight" type="number" min="2" max="480" step="2" value="480" required />
+            </div>
+          </div>
+        </div>
+              <div class="format-options">
+                <div class="input-group">
+                  <label for="encoderOverride">Video encoder: <span class="info-tip" tabindex="0" role="img" aria-label="GPU encoders use your graphics card. CPU uses your processor. Unavailable GPU choices safely fall back to CPU." title="GPU encoders use your graphics card. CPU uses your processor. Unavailable GPU choices safely fall back to CPU." data-tooltip="GPU encoders use your graphics card. CPU uses your processor. Unavailable GPU choices safely fall back to CPU.">i</span></label>
+                  <select id="encoderOverride">
+                    <option value="auto">Auto (NVIDIA / AMD / Intel / CPU)</option>
+                    <option value="nvenc">NVIDIA NVENC</option>
+                    <option value="amf">AMD AMF</option>
+                    <option value="qsv">Intel QSV</option>
+                    <option value="cpu">CPU (libx264)</option>
+                  </select>
+                </div>
+                <div class="crop-option">
+                  <label class="details-toggle" for="autoCrop"><input id="autoCrop" type="checkbox" /> Auto-Crop Black Bars (Letterbox/Pillarbox Removal)</label>
+                  <span class="info-tip" tabindex="0" role="img" aria-label="Samples two seconds at minute one, or the opening of shorter clips. Removes detected black borders before resizing. Scenes can vary; check a preview. If detection fails, keeps the original frame." title="Samples two seconds at minute one, or the opening of shorter clips. Removes detected black borders before resizing. Scenes can vary; check a preview. If detection fails, keeps the original frame." data-tooltip="Samples two seconds at minute one, or the opening of shorter clips. Removes detected black borders before resizing. Scenes can vary; check a preview. If detection fails, keeps the original frame.">i</span>
+                </div>
+              </div>
+              <div class="input-group">
           <label for="subtitleFolder">Input Subtitle Folder (Default):</label>
           <div class="input-row">
             <input type="text" id="subtitleFolder" placeholder="Follows the anime folder unless overridden" aria-describedby="subtitleHint" />
@@ -62,62 +160,46 @@
             <button type="button" id="resetSubtitleBtn" class="secondary-btn">Use anime folder</button>
           </div>
         </div>
-
-        <div class="input-group">
-          <label for="outputFolder">Output Wii Folder:</label>
-          <div class="input-row">
-            <input type="text" id="outputFolder" placeholder="C:\Users\YourName\Videos\WiiOutput" />
-            <button id="browseOutputBtn" class="secondary-btn">Browse</button>
-          </div>
-        </div>
-
-        <div class="input-group">
+              <div class="input-group">
           <label for="animeTitle">Anime Title / Output Name Pattern:</label>
           <input type="text" id="animeTitle" placeholder="Sgt Keroro (output: Sgt Keroro - Ep01 [Wii].mp4)" aria-describedby="outputNameHint" />
           <p id="outputNameHint" class="field-hint" aria-live="polite">Original filename_Wii.mp4</p>
         </div>
 
-        <div class="settings-grid">
-          <div class="input-group quality-setting">
-            <label for="crfSelect">Quality: <span id="crfValue">23</span></label>
-            <select id="crfSelect">
-              <option value="20">20 - High Quality (Larger files)</option>
-              <option value="23" selected>23 - Standard Wii Balance (Recommended)</option>
-              <option value="26">26 - Compressed (Smallest files for SD)</option>
-            </select>
-          </div>
+              <div class="advanced-footer">
+                <span>Audio: 160 kbps <span class="info-tip" tabindex="0" role="img" aria-label="Bitrate is the amount of data used per second. Audio remains fixed at 160 kbps stereo for the existing Wii profile." title="Bitrate is the amount of data used per second. Audio remains fixed at 160 kbps stereo for the existing Wii profile." data-tooltip="Bitrate is the amount of data used per second. Audio remains fixed at 160 kbps stereo for the existing Wii profile.">i</span></span>
+                <label class="details-toggle"><input id="showLogs" type="checkbox" /> Show diagnostic details</label>
+              </div>
+            </div>
+          </details>
+        </section>
 
-          <div class="input-group">
-            <label for="cpuMode">CPU usage:</label>
-            <select id="cpuMode" title="Background Mode reserves CPU capacity for desktop use. Full Throttle allows automatic full CPU threading.">
-              <option value="balanced">Background Mode</option>
-              <option value="maximum" selected>Full Throttle</option>
-            </select>
-          </div>
-        </div>
-        <div class="action-row">
+        <section class="flow-step encode-step" aria-labelledby="encodeStepHeading">
+          <h2 id="encodeStepHeading" class="step-heading"><span class="step-number" aria-hidden="true">3</span> Start Encoding</h2>
+          <div class="action-row">
           <button id="convertBtn" class="primary-btn" disabled>Start Platoon Downscale</button>
           <button type="button" id="previewBtn" class="secondary-btn" disabled>Preview First 10 Seconds</button>
         </div>
-
-        <section id="encodingProgress" class="live-encoding-progress" hidden aria-label="Current encoding progress and ETA">
+          <section id="queueOverall" hidden aria-label="Overall file queue progress">
+            <span id="queueProgressLabel" role="status" aria-live="polite"></span>
+            <progress id="queueProgress" max="100" value="0" aria-label="Overall queue progress"></progress>
+          </section>
+          <section id="encodingProgress" class="live-encoding-progress" hidden aria-label="Current encoding progress and ETA">
           <div id="encodingProgressTrack" class="progress-container" role="progressbar" aria-label="Encoding progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
             <div id="encodingProgressFill" class="progress-bar"></div>
           </div>
           <span id="encodingProgressText" role="status" aria-live="polite"></span>
         </section>
-
-        <div class="preferences-row">
+          <div class="preferences-row">
           <label><input type="checkbox" id="uiSounds" checked /> UI sounds</label>
           <label title="When enabled, closing hides the app and keeps encoding. Use the tray menu to exit."><input type="checkbox" id="minimizeOnClose" checked disabled /> Minimize to System Tray</label>
           <button type="button" id="recoverBatchBtn" class="secondary-btn" hidden>Review interrupted batch</button>
         </div>
-
-        <section class="status-box" aria-label="Encoding status and statistics">
+          <section class="status-box" aria-label="Encoding status and statistics">
           <div id="status" role="status" aria-live="polite" aria-atomic="true">Ready - Waiting for folder selection</div>
           <div id="fileName" class="file-name">No active video</div>
-          <div id="subtitleStatus" class="file-name">External subtitles off</div>
-          <div class="progress-label"><span id="fileLabel">Current file</span><span id="filePercent">0%</span></div>
+          <div id="subtitleStatus" class="file-name subtitle-status" title="External subtitle selection only. The current encoder does not copy embedded subtitle tracks.">Subtitles: No external file (default)</div>
+          <div class="progress-label file-progress-label"><span id="fileLabel">Current file</span><span id="filePercent">0%</span></div>
           <div id="fileProgress" class="progress-container" role="progressbar" aria-label="Current file progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
             <div id="fileProgressBar" class="progress-bar"></div>
           </div>
@@ -125,20 +207,21 @@
           <div id="batchProgress" class="progress-container" role="progressbar" aria-label="Overall batch progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
             <div id="progressBar" class="progress-bar"></div>
           </div>
-          <dl class="encoding-stats">
+          <div class="diagnostic-display"><dl class="encoding-stats">
             <div><dt>Encoded</dt><dd id="successCount">0</dd></div>
             <div><dt>Skipped</dt><dd id="skippedCount">0</dd></div>
             <div><dt>Failed</dt><dd id="failedCount">0</dd></div>
             <div><dt>Elapsed</dt><dd id="elapsed">0:00</dd></div>
             <div><dt>Speed</dt><dd id="speed">—</dd></div>
             <div><dt>FPS</dt><dd id="fps">—</dd></div>
-          </dl>
-          <details id="performanceDetails" hidden>
+          </dl></div>
+          <div class="diagnostic-display"><details id="performanceDetails" hidden>
             <summary>Last encode performance</summary>
             <pre id="performanceText" class="performance-text"></pre>
-          </details>
+          </details></div>
           <details id="errorDetails" hidden><summary>Warnings and skipped files</summary><ul id="errorList" aria-label="Persistent file warnings and errors"></ul></details>
           <p id="notice" class="notice" role="status" aria-live="polite"></p>
+        </section>
         </section>
       </main>
     </div>

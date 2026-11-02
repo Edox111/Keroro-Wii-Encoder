@@ -1,0 +1,10 @@
+{
+  "version": "1.1.1",
+  "notes": "Describe the changes in this release.",
+  "platforms": {
+    "windows-x86_64": {
+      "url": "https://github.com/Edox111/keroro-wii-encoder/releases/download/v1.1.1/Keroro.Wii.Encoder_1.1.1_x64-setup.exe",
+      "signature": "REPLACE_WITH_THE_ENTIRE_CONTENTS_OF_THE_GENERATED_EXE_SIG_FILE"
+    }
+  }
+}

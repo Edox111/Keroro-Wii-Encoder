@@ -10,12 +10,14 @@ pub(crate) fn configure(
     encoder: VideoEncoder,
     crf: u8,
     cpu_threads: &str,
+    max_fps: u32,
 ) {
     command
         .args(["-map", "0:v:0", "-map", "0:a:0?", "-sn", "-dn", "-vf"])
         .arg(filter)
         .args(["-c:v", encoder.name()]);
     let quality = crf.to_string();
+    let fps = max_fps.to_string();
     let bitrate = match crf {
         20 => "2000k",
         26 => "1000k",
@@ -44,29 +46,25 @@ pub(crate) fn configure(
             command.args(["-preset", "fast", "-look_ahead", "0", "-b:v", bitrate]);
         }
     }
-    // QSV's generic level option uses integer level_idc; the other encoders accept 3.0.
+    // QSV uses integer level_idc; 31 is equivalent to Level 3.1.
     command
         .args([
             "-profile:v",
-            if encoder == VideoEncoder::Amf {
-                "main"
-            } else {
-                "baseline"
-            },
+            "main",
             "-level:v",
             if encoder == VideoEncoder::Qsv {
-                "30"
+                "31"
             } else {
-                "3.0"
+                "3.1"
             },
             "-pix_fmt",
             "yuv420p",
             "-fpsmax",
-            "30",
+            &fps,
             "-maxrate",
-            "2000k",
+            "3200k",
             "-bufsize",
-            "4000k",
+            "6000k",
             "-bf",
             "0",
         ])
@@ -80,7 +78,7 @@ pub(crate) fn configure(
             "-ac",
             "2",
             "-ar",
-            "44100",
+            "48000",
             "-movflags",
             "+faststart",
             "-f",
@@ -88,4 +86,55 @@ pub(crate) fn configure(
         ]);
     // QSV/AMF may negotiate NV12 surfaces internally; H.264 remains 8-bit 4:2:0.
     // No GPU decoding/hwupload filter: libass consumes software frames safely.
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn every_encoder_uses_the_same_wiimc_output_contract() {
+        for encoder in [
+            VideoEncoder::Cpu,
+            VideoEncoder::Nvenc,
+            VideoEncoder::Amf,
+            VideoEncoder::Qsv,
+        ] {
+            let mut command = Command::new("not-executed-ffmpeg");
+            configure(&mut command, VIDEO_FILTER, encoder, 23, "0", 30);
+            let args = command
+                .as_std()
+                .get_args()
+                .map(|arg| arg.to_string_lossy().into_owned())
+                .collect::<Vec<_>>();
+            for (flag, expected) in [
+                ("-c:v", encoder.name()),
+                ("-profile:v", "main"),
+                (
+                    "-level:v",
+                    if encoder == VideoEncoder::Qsv {
+                        "31"
+                    } else {
+                        "3.1"
+                    },
+                ),
+                ("-pix_fmt", "yuv420p"),
+                ("-maxrate", "3200k"),
+                ("-bufsize", "6000k"),
+                ("-bf", "0"),
+                ("-c:a", "aac"),
+                ("-b:a", "160k"),
+                ("-ac", "2"),
+                ("-ar", "48000"),
+                ("-movflags", "+faststart"),
+                ("-f", "mp4"),
+            ] {
+                let matches = args
+                    .windows(2)
+                    .filter(|pair| pair[0] == flag)
+                    .collect::<Vec<_>>();
+                assert_eq!(matches.len(), 1, "{encoder:?}: {flag}");
+                assert_eq!(matches[0][1], expected, "{encoder:?}: {flag}");
+            }
+        }
+    }
 }

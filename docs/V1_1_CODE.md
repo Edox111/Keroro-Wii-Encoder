@@ -1,3 +1,5 @@
+> Historical implementation snapshot. Current encoding parameters and components are defined by the source tree and [WiiMC profile](WIIMC_PROFILE.md); older code blocks below are not drop-in replacements.
+
 # Keroro Wii Encoder implementation listings
 
 Current source snapshot includes Wave 5, UI/lifecycle, progress/ETA, Cancel, and smart skip. Native Tauri compilation, 51 core unit tests, 9 media integration tests, and 3 Tauri state tests pass. See [UI_LIFECYCLE.md](UI_LIFECYCLE.md) for validation limits. The final installer has not been rebuilt. The HTML entry is root `index.html`; apply modules and configuration together. Source files remain authoritative.

@@ -7,7 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const PIPELINE: &str = "wii-h264-sd-420-level30-aac160-v1";
+const PIPELINE: &str = "wiimc-h264-main31-sd-420-vbv3200-aac160-48k-v2";
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 struct Fingerprint {
     path: PathBuf,
@@ -94,6 +94,8 @@ impl Fingerprint {
 pub(crate) struct Request {
     pipeline: String,
     quality: u8,
+    #[serde(default)]
+    video_format: crate::VideoSettings,
     video: Fingerprint,
     subtitle: Option<Fingerprint>,
 }
@@ -102,6 +104,7 @@ impl Request {
         Ok(Self {
             pipeline: PIPELINE.into(),
             quality: settings.crf,
+            video_format: settings.video.normalized(),
             video: Fingerprint::read(&item.input, false)?,
             subtitle: item
                 .subtitle
@@ -332,6 +335,7 @@ mod tests {
             validation_error: None,
         };
         let settings = Settings {
+            video: Default::default(),
             input_dir: video.to_string_lossy().into_owned(),
             output_dir: directory.to_string_lossy().into_owned(),
             subtitle_dir: Some(subtitle.to_string_lossy().into_owned()),
@@ -359,6 +363,18 @@ mod tests {
             assess(&registry, &item, &settings).expect("verified"),
             Match::Verified
         );
+        let mut changed_geometry = settings.clone();
+        changed_geometry.video.auto_crop = true;
+        assert!(matches!(assess(&registry, &item, &changed_geometry).expect("crop conflict"), Match::Changed(_)));
+        changed_geometry.video = settings.video.clone();
+        changed_geometry.video.encoder_override = crate::video::EncoderPreference::Cpu;
+        assert!(matches!(assess(&registry, &item, &changed_geometry).expect("encoder conflict"), Match::Changed(_)));
+        changed_geometry.video = settings.video.clone();
+        changed_geometry.video.resolution_preset = crate::ResolutionPreset::Wide;
+        assert!(matches!(
+            assess(&registry, &item, &changed_geometry).expect("geometry conflict"),
+            Match::Changed(_)
+        ));
         let mut changed = settings.clone();
         changed.crf = 26;
         assert!(matches!(
@@ -464,6 +480,7 @@ mod tests {
             validation_error: None,
         };
         let settings = Settings {
+            video: Default::default(),
             input_dir: video.to_string_lossy().into_owned(),
             output_dir: directory.to_string_lossy().into_owned(),
             subtitle_dir: None,

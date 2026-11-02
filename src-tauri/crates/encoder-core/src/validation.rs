@@ -22,7 +22,11 @@ fn check(
     document: &serde_json::Value,
     expected: Option<f64>,
     bytes: u64,
+    geometry: &crate::VideoSettings,
 ) -> Result<Validated, String> {
+    geometry.validate()?;
+    let (width, height) = geometry.dimensions();
+    let max_fps = geometry.max_fps()? as f64;
     let streams = document["streams"]
         .as_array()
         .ok_or("Output has no stream metadata.")?;
@@ -31,23 +35,29 @@ fn check(
         .find(|s| s["codec_type"] == "video")
         .ok_or("Output has no video stream.")?;
     if video["codec_name"] != "h264"
-        || video["width"] != 640
-        || video["height"] != 480
+        || video["width"] != width
+        || video["height"] != height
         || video["pix_fmt"] != "yuv420p"
-        || !matches!(
-            video["profile"].as_str(),
-            Some("Constrained Baseline" | "Baseline" | "Main")
-        )
-        || !number(&video["level"]).is_some_and(|v| v > 0.0 && v <= 30.0)
-        || !rate(&video["avg_frame_rate"]).is_some_and(|v| v <= 30.01)
+        || video["profile"] != "Main"
+        || number(&video["level"]) != Some(31.0)
+        || !rate(&video["avg_frame_rate"]).is_some_and(|v| v <= max_fps + 0.01)
     {
         return Err("Output video does not meet the Wii SD encoding profile.".into());
+    }
+    if let Some(expected_dar) = geometry.display_ratio() {
+        let actual = video["display_aspect_ratio"]
+            .as_str()
+            .and_then(|value| value.split_once(':'))
+            .and_then(|(a, b)| Some(a.parse::<f64>().ok()? / b.parse::<f64>().ok()?));
+        if !actual.is_some_and(|value| value.is_finite() && (value - expected_dar).abs() < 0.01) {
+            return Err("Output display aspect ratio differs from the selected format.".into());
+        }
     }
     for audio in streams.iter().filter(|s| s["codec_type"] == "audio") {
         if audio["codec_name"] != "aac"
             || audio["profile"] != "LC"
             || audio["channels"] != 2
-            || number(&audio["sample_rate"]) != Some(44100.0)
+            || number(&audio["sample_rate"]) != Some(48000.0)
         {
             return Err("Output audio does not meet the AAC-LC stereo profile.".into());
         }
@@ -80,9 +90,10 @@ pub(crate) async fn validate(
     has_audio: Option<bool>,
     cancel: &Cancellation,
     processes: &Arc<ActiveProcess>,
+    geometry: &crate::VideoSettings,
 ) -> Result<Validated, String> {
     let mut command = process(&tools.ffprobe);
-    command.args(["-v", "error", "-protocol_whitelist", "file,pipe", "-show_entries", "stream=codec_type,codec_name,profile,width,height,pix_fmt,level,avg_frame_rate,channels,sample_rate:format=format_name,duration", "-of", "json"]).arg(output);
+    command.args(["-v", "error", "-protocol_whitelist", "file,pipe", "-show_entries", "stream=codec_type,codec_name,profile,width,height,pix_fmt,level,avg_frame_rate,display_aspect_ratio,sample_aspect_ratio,channels,sample_rate:format=format_name,duration", "-of", "json"]).arg(output);
     let text = hardware::probe(command, cancel, processes)
         .await
         .map_err(|e| format!("Output verification failed: {e}"))?;
@@ -99,12 +110,12 @@ pub(crate) async fn validate(
     {
         return Err("Output verification failed: the source audio track is missing from the encoded output.".into());
     }
-    check(&document, expected, bytes)
+    check(&document, expected, bytes, geometry)
 }
 pub(crate) const FAT32_MAX_BYTES: u64 = u32::MAX as u64;
 pub(crate) fn projected_fat32_warning(duration: Option<f64>) -> Option<String> {
     duration.filter(|d| d.is_finite() && *d > 0.0)
-        .filter(|d| d * (2_000_000.0 + 160_000.0) / 8.0 * 1.02 > FAT32_MAX_BYTES as f64)
+        .filter(|d| d * (3_200_000.0 + 160_000.0) / 8.0 * 1.02 > FAT32_MAX_BYTES as f64)
         .map(|_| "This long encode may exceed FAT32's single-file limit at the selected bitrate cap. Consider shorter source segments if the Wii drive uses FAT32; the actual output size will also be checked.".into())
 }
 pub(crate) fn fat32_warning(bytes: u64) -> Option<String> {
@@ -115,22 +126,28 @@ pub(crate) fn fat32_warning(bytes: u64) -> Option<String> {
 mod tests {
     use super::*;
     fn metadata() -> serde_json::Value {
-        serde_json::json!({"streams":[{"codec_type":"video","codec_name":"h264","width":640,"height":480,"pix_fmt":"yuv420p","profile":"Main","level":30,"avg_frame_rate":"24000/1001"},{"codec_type":"audio","codec_name":"aac","profile":"LC","channels":2,"sample_rate":"44100"}],"format":{"format_name":"mov,mp4,m4a,3gp,3g2,mj2","duration":"60"}})
+        serde_json::json!({"streams":[{"codec_type":"video","codec_name":"h264","width":640,"height":480,"pix_fmt":"yuv420p","profile":"Main","level":31,"avg_frame_rate":"24000/1001","display_aspect_ratio":"4:3"},{"codec_type":"audio","codec_name":"aac","profile":"LC","channels":2,"sample_rate":"48000"}],"format":{"format_name":"mov,mp4,m4a,3gp,3g2,mj2","duration":"60"}})
     }
     #[test]
     fn rejects_wrong_format_corruption_and_truncated_duration() {
         let m = metadata();
-        assert!(check(&m, Some(60.0), 100).is_ok());
+        assert!(check(&m, Some(60.0), 100, &crate::VideoSettings::default()).is_ok());
         for key in ["pix_fmt", "codec_name", "profile"] {
             let mut m = metadata();
             m["streams"][0][key] = "invalid".into();
-            assert!(check(&m, Some(60.0), 100).is_err());
+            assert!(check(&m, Some(60.0), 100, &crate::VideoSettings::default()).is_err());
         }
-        assert!(check(&m, Some(120.0), 100).is_err());
-        assert!(check(&m, Some(60.0), 0).is_err());
+        assert!(check(&m, Some(120.0), 100, &crate::VideoSettings::default()).is_err());
+        assert!(check(&m, Some(60.0), 0, &crate::VideoSettings::default()).is_err());
+        let mut m = metadata();
+        m["streams"][1]["sample_rate"] = "44100".into();
+        assert!(check(&m, None, 100, &crate::VideoSettings::default()).is_err());
+        let mut m = metadata();
+        m["streams"][1]["channels"] = 6.into();
+        assert!(check(&m, None, 100, &crate::VideoSettings::default()).is_err());
         let mut m = metadata();
         m["streams"][0]["avg_frame_rate"] = "60/1".into();
-        assert!(check(&m, None, 100).is_err());
+        assert!(check(&m, None, 100, &crate::VideoSettings::default()).is_err());
         assert!(fat32_warning(FAT32_MAX_BYTES).is_none());
         assert!(fat32_warning(FAT32_MAX_BYTES + 1).is_some());
     }

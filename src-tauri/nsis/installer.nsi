@@ -440,8 +440,18 @@ FunctionEnd
 
 ; 5. Choose install directory page
 !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
-!define MUI_PAGE_CUSTOMFUNCTION_SHOW KeroroPageShow
+!define MUI_PAGE_CUSTOMFUNCTION_SHOW KeroroDirectoryShow
 !insertmacro MUI_PAGE_DIRECTORY
+
+Function KeroroDirectoryShow
+  Call KeroroPageShow
+  ${If} $mui.DirectoryPage.DirectoryBox P<> 0
+    ; GroupBox captions otherwise retain themed black text on the OLED page.
+    System::Call 'uxtheme::SetWindowTheme(p $mui.DirectoryPage.DirectoryBox, w "", w "")'
+    SetCtlColors $mui.DirectoryPage.DirectoryBox FFFFFF transparent
+    System::Call 'user32::InvalidateRect(p $mui.DirectoryPage.DirectoryBox, p 0, i 1)'
+  ${EndIf}
+FunctionEnd
 
 ; 6. Start menu shortcut page
 Var AppStartMenuFolder

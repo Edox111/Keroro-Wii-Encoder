@@ -23,7 +23,7 @@ pub(super) fn request_close(app: &AppHandle, force_exit: bool) {
     let manager = app.state::<BatchManager>().inner().clone();
     let active = match manager.0.lock() {
         Ok(mut state) => {
-            if state.close_prompt_open || state.exiting {
+            if state.close_prompt_open || state.exiting || state.updating {
                 return;
             }
             if !force_exit && state.minimize_on_close {

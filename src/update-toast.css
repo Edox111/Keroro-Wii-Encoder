@@ -1,0 +1,6 @@
+.update-ready-toast { position: fixed; inset: auto 16px 16px auto; z-index: 50; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 5px 12px; box-sizing: border-box; max-width: min(520px, calc(100vw - 32px)); padding: 12px 14px; border: 1px solid #666; border-radius: 9px; background: #121212; color: #fff; box-shadow: 0 8px 32px #000b; font: 400 12px/1.4 'Segoe UI', sans-serif; }
+.update-ready-toast > span { overflow-wrap: anywhere; }
+.update-ready-toast > small { grid-column: 1 / -1; color: #bbb; font-size: 11px; }
+.update-ready-toast > button { border: 1px solid var(--accent-color, #22c55e); border-radius: 6px; padding: 7px 10px; background: #080808; color: #fff; cursor: pointer; white-space: nowrap; font: inherit; }
+.update-ready-toast > button:disabled { opacity: 0.5; cursor: not-allowed; }
+.update-ready-toast > button:focus-visible { outline: 2px solid var(--accent-color, #22c55e); outline-offset: 3px; }

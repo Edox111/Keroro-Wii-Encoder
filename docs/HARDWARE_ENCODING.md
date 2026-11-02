@@ -9,6 +9,10 @@ other media children, accept cancellation, have an eight-second timeout, and
 are reaped before the next process starts. An all-skipped batch does not run
 encoder detection.
 
+Advanced Mode can select Auto, NVIDIA NVENC, AMD AMF, Intel QSV, or CPU. A GPU
+override restricts probing to that GPU, with CPU fallback if it is unavailable.
+CPU skips GPU probing. These settings are saved with preferences and checkpoints.
+
 | Encoder | Preset / rate control |
 | --- | --- |
 | NVIDIA NVENC | `p4`, VBR, CQ from the selected quality value |
@@ -29,9 +33,9 @@ frames directly; QSV/AMF may negotiate NV12 input surfaces internally. NV12 is
 also 8-bit 4:2:0, and the encoded H.264 stream remains 4:2:0 rather than 4:4:4.
 The encoder handles the final upload after software filters have finished.
 
-Every path enforces the same 640x480 padded canvas, at most 30 fps, Baseline
-(AMF: Main) profile, Level 3.0, no B-frames, 2 Mbps VBV maximum rate with a 4 Mb
-buffer, AAC-LC stereo at 160 kbps/44.1 kHz, and MP4 fast-start metadata.
+Every path uses the selected SD raster and display aspect, at most 30 fps
+(25 fps for 848x480), Main profile, Level 3.1, no B-frames, 3.2 Mbps VBV maximum rate with a 6 Mb
+buffer, AAC-LC stereo at 160 kbps/48 kHz, and MP4 fast-start metadata.
 Wii player compatibility and speed still need testing on the user's hardware;
 CPU subtitle rendering can remain the bottleneck.
 
@@ -46,3 +50,5 @@ same managed FFmpeg process, including hardware-encoding worker threads.
 
 Encoder choices and probe/driver failures go to the local diagnostic log.
 They do not become spurious per-episode UI warnings.
+
+See [aspect ratio and resolution](ASPECT_RATIO_AND_RESOLUTION.md) for anamorphic SAR, custom sizing, and the conservative frame-rate budget.
