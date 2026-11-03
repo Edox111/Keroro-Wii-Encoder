@@ -72,11 +72,3 @@
     }
   }
 }
-"plugins": {
-  "updater": {
-    "endpoints": [
-      "https://github.com/Edox111/Keroro-Wii-Encoder/releases/latest/download/latest.json"
-    ],
-    "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEY4MzhCNkJCNTY0QUI5N0MKUldSOHVVcFd1N1k0K0o1TE93MGtYRmFHci9ySUw3RDk0L2RhNVF3VkhMTG94bDB5SnZOclMwL0wK"
-  }
-}
