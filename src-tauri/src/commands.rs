@@ -8,6 +8,24 @@ use keroro_encoder_core::{Cancellation, Progress, Settings, TaskKind};
 use std::sync::Arc;
 use tauri::{AppHandle, Manager, State, WebviewWindow};
 
+#[tauri::command]
+pub(super) async fn probe_media_streams(
+    app: AppHandle,
+    path: String,
+) -> Result<Vec<keroro_encoder_core::audio::AudioStream>, String> {
+    static PROBES: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(2);
+    let _permit = PROBES.acquire().await.map_err(|e| e.to_string())?;
+    let tools = resolve_tools(&app).await?;
+    // Metadata probes own separate tracked children; they never replace FFmpeg's slot.
+    let processes = Arc::new(ActiveProcess::default());
+    keroro_encoder_core::audio::probe_streams(
+        &tools,
+        std::path::Path::new(&path),
+        &Cancellation::new(),
+        &processes,
+    ).await
+}
+
 pub(super) fn change_pause(
     window: WebviewWindow,
     manager: &BatchManager,

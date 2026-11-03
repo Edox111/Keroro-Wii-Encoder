@@ -13,6 +13,8 @@ body .input-step .drop-zone > .input-group { display: grid; grid-template-column
 .queue-list [data-status="Error"] .queue-status { color: #ffb0a7; }
 .queue-list button { padding: 3px 6px; border: 1px solid #555; background: #121212; color: #fff; border-radius: 4px; cursor: pointer; font: inherit; }
 .queue-message { grid-column: 1 / -1; color: #bbb; white-space: pre-wrap; overflow-wrap: anywhere; }
+.queue-list .queue-audio { grid-column: 1 / -1; width: 100%; min-width: 0; padding: 4px 6px; border: 1px solid #555; border-radius: 5px; background: #080808; color: #eee; font: inherit; color-scheme: dark; }
+.queue-list .queue-audio:disabled { opacity: 0.75; }
 #queueOverall { flex: 0 0 auto; margin-top: 5px; font-size: 0.72rem; }
 #queueProgress { display: block; width: 100%; height: 6px; margin-top: 4px; accent-color: var(--accent-color); }
 body[data-has-queue="true"] .advanced-content { max-height: clamp(48px, calc(100dvh - 800px), 160px); }

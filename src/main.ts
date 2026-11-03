@@ -1,3 +1,4 @@
+import { getLanguagePreferences, subscribeLanguagePreferences } from "./language-preferences";
 import { FileQueue, QueueSafetyError, isQueueVideo, parentDirectory, videoExtensions } from "./file-queue";
 import { initializeQueueView } from "./queue-view";
 import { isSubtitleFile } from "./subtitle-matching";
@@ -197,6 +198,7 @@ async function initialize(): Promise<void> {
   let uiModeController: UiModeController | undefined;
   let fileQueue: FileQueue | null = null;
   let queueView: ReturnType<typeof initializeQueueView> | null = null;
+  let stopLanguagePreferences = () => {};
   let currentJob: string | null = null;
   let sequence = -1;
   let diagnosticsKey = "";
@@ -379,6 +381,7 @@ async function initialize(): Promise<void> {
       if (!analysis.media_path && !analysis.sub_path && !analysis.output_path) throw new Error("No supported media, subtitles, or empty output folder found.");
       if (analysis.media_path && isQueueVideo(analysis.media_path)) fileQueue?.add(paths.filter(isQueueVideo), paths.filter(isSubtitleFile));
       else if (paths.some(isSubtitleFile)) fileQueue?.add([], paths.filter(isSubtitleFile));
+      probeQueueAudio();
       if (analysis.output_path) output.value = analysis.output_path;
       if (analysis.media_path) input.value = analysis.media_path;
       const explicitSubtitle = paths.some((path) => /\.(ass|ssa|srt|vtt)$/i.test(path));
@@ -443,7 +446,7 @@ async function initialize(): Promise<void> {
       if (!liveText.textContent) liveText.textContent = "Preparing downscale... (ETA: --)";
     } else { resetEncodingProgress(); }
     if (isEncoding || starting || dropScanning || closing || updating || disposed) hideDropOverlay();
-    controls.forEach((control) => { control.disabled = updating || locked || starting || pausePending || dropScanning || disposed || !ready || previewLoading || closing || recoveryAction || recoveryLoading; });
+    controls.forEach((control) => { control.disabled = (control === preview && !!fileQueue?.hasPendingAudioProbes) || updating || locked || starting || pausePending || dropScanning || disposed || !ready || previewLoading || closing || recoveryAction || recoveryLoading; });
     document.querySelector("main.card")?.setAttribute("aria-busy", String(updating || locked || starting || pausePending || dropScanning || previewLoading || closing));
     const activeBatch = isEncoding && activeKind === "batch";
     convert.classList.toggle("resume-btn", activeBatch && paused);
@@ -451,7 +454,7 @@ async function initialize(): Promise<void> {
     convert.textContent = activeBatch ? pausePending ? (pauseAction === "resume" ? "Resuming..." : "Pausing...") : paused ? "Resume" : "Pause" : queueRunning ? "Preparing next file..." : "Start Platoon Downscale";
     convert.disabled = !ready || starting || pausePending || dropScanning || disposed || previewLoading || updating || closing
       || recoveryAction || recoveryLoading || (isEncoding && activeKind !== "batch") || (queueRunning && !isEncoding)
-      || (!!fileQueue?.hasItems && !fileQueue.hasPending && !queueRunning && !isEncoding);
+      || !!fileQueue?.hasPendingAudioProbes || (!!fileQueue?.hasItems && !fileQueue.hasPending && !queueRunning && !isEncoding);
     preview.textContent = isEncoding && activeKind === "preview" ? "Generating preview..." : "Preview First 10 Seconds";
     if (recoveryPending && !isEncoding) convert.disabled = true;
     convert.title = recoveryPending ? "Resume or discard the interrupted checkpoint before starting another batch." : "";
@@ -607,6 +610,8 @@ async function initialize(): Promise<void> {
     disposed = true;
     stopUpdates();
     fileQueue?.stop();
+    fileQueue?.stopProbing();
+    stopLanguagePreferences();
     queueView?.dispose();
     uiModeController?.dispose();
     disposeTooltips();
@@ -660,17 +665,23 @@ async function initialize(): Promise<void> {
     } finally { minimizeOnClose.disabled = disposed || updating || closing; }
   });
 
-  queueView = initializeQueueView(id => { if (!updating && !closing) fileQueue?.remove(id); }, () => { if (!updating && !closing) fileQueue?.clear(); });
+  queueView = initializeQueueView(id => { if (!updating && !closing) fileQueue?.remove(id); }, () => { if (!updating && !closing) fileQueue?.clear(); }, (id, index) => { if (!updating && !closing) fileQueue?.selectAudio(id, index); });
   let queueStorage: Storage | undefined;
   try { queueStorage = localStorage; } catch { /* Queue stays usable without storage. */ }
   let queueUiKey = "";
   fileQueue = new FileQueue(snapshot => {
     if (disposed) return;
     queueView?.render(snapshot);
-    const next = `${snapshot.running}:${snapshot.items.length}:${snapshot.complete}:${snapshot.items.some(item => item.status === "Pending")}`;
+    const next = `${snapshot.running}:${snapshot.probing}:${snapshot.items.length}:${snapshot.complete}:${snapshot.items.some(item => item.status === "Pending")}`;
     if (next !== queueUiKey) { queueUiKey = next; setEncodingState(busy); }
   }, queueStorage);
   queueView.render(fileQueue.snapshot());
+  stopLanguagePreferences = subscribeLanguagePreferences(() => fileQueue?.reselectAutomaticAudio(getLanguagePreferences().preferredAudioLang));
+  function probeQueueAudio(): void {
+    if (!fileQueue || disposed || !isTauri()) return;
+    void fileQueue.probePendingAudio(path => invoke("probe_media_streams", { path }), () => getLanguagePreferences().preferredAudioLang)
+      .catch(error => { if (!disposed) notice.textContent = `Cannot probe audio: ${String(error)}`; });
+  }
   addFiles.addEventListener("click", () => {
     if (!canAcceptDrop()) return;
     addFiles.disabled = true;
@@ -680,7 +691,7 @@ async function initialize(): Promise<void> {
       .finally(() => setEncodingState(busy));
   });
   async function startFileQueue(): Promise<void> {
-    if (!fileQueue || !fileQueue.hasPending || fileQueue.running || !canAcceptDrop()) return;
+    if (!fileQueue || !fileQueue.hasPending || fileQueue.hasPendingAudioProbes || fileQueue.running || !canAcceptDrop()) return;
     if (recoveryPending) { showRecovery(); return; }
     const title = cleanAnimeTitle(animeTitle.value);
     if (!output.value.trim() || !selectedVideo() || ![20, 23, 26].includes(Number(quality.value))
@@ -690,7 +701,7 @@ async function initialize(): Promise<void> {
     }
     await fileQueue.run(async (item, signal) => {
       if (disposed || closing || updating || signal.aborted) throw new QueueSafetyError("Queue stopped.");
-      const result = await startEncoding("batch", { path: item.path, signal, subtitlePath: item.subtitlePath });
+      const result = await startEncoding("batch", { path: item.path, signal, subtitlePath: item.subtitlePath, selectedAudioIndex: item.selectedAudioIndex });
       if (!result) throw new QueueSafetyError("Queue stopped. Review input/output settings or the active native task before restarting.");
       return result;
     }, path => outputNameForInput(animeTitle.value, path));
@@ -759,9 +770,11 @@ async function initialize(): Promise<void> {
   browseInput.addEventListener("click", () => { void selectFolder(input, browseInput); });
   browseOutput.addEventListener("click", () => { void selectFolder(output, browseOutput); });
   browseSubtitles.addEventListener("click", () => { void selectFolder(subtitles, browseSubtitles); });
-  async function startEncoding(kind: "batch" | "preview", queued?: { path: string; signal: AbortSignal; subtitlePath?: string | null }): Promise<BatchProgress | null> {
+  async function startEncoding(kind: "batch" | "preview", queued?: { path: string; signal: AbortSignal; subtitlePath?: string | null; selectedAudioIndex?: number | null }): Promise<BatchProgress | null> {
+    if (fileQueue?.hasPendingAudioProbes) return null;
     if (!ready || busy || starting || pausePending || dropScanning || previewLoading || updating || closing || disposed || recoveryAction || recoveryLoading) return null;
     if (kind === "batch" && recoveryPending) { showRecovery(); return null; }
+    const queuedBatch = !!queued && kind === "batch";
     saveForm();
     const inputDir = queued?.path ?? input.value.trim();
     const outputDir = output.value.trim();
@@ -802,7 +815,7 @@ async function initialize(): Promise<void> {
       batchPercent.textContent = "0%";
       if (queued && (queued.signal.aborted || disposed || closing)) throw new QueueSafetyError("Queue stopped before submission.");
       const args = {
-        settings: { inputDir, outputDir, crf, cpuMode: cpuMode.value, video: videoSettings, subtitleDir: queued?.subtitlePath !== undefined ? queued.subtitlePath : queued && !subtitleFolderOverridden ? parentDirectory(queued.path) : subtitles.value.trim() || null, animeTitle: title },
+        settings: { inputDir, outputDir, crf, cpuMode: cpuMode.value, video: videoSettings, selectedAudioIndex: queued?.selectedAudioIndex ?? null, preferredAudioLang: getLanguagePreferences().preferredAudioLang, subtitleDir: queued?.subtitlePath !== undefined ? queued.subtitlePath : queued && !subtitleFolderOverridden ? parentDirectory(queued.path) : subtitles.value.trim() || null, animeTitle: title },
       };
       const jobId = await invoke<string>(kind === "preview" ? "start_preview" : "start_batch", args);
       acceptedJob = true;
@@ -814,7 +827,7 @@ async function initialize(): Promise<void> {
       if (latest) render(latest, true);
     } catch (error) {
       setEncodingState(acceptedJob);
-      if (queued && !acceptedJob) {
+      if (queuedBatch && !acceptedJob) {
         if (!String(error).includes("An encoding task, update installation, or close confirmation is already active.")) playError();
         throw error;
       }
@@ -823,7 +836,7 @@ async function initialize(): Promise<void> {
       }
       setBar(fileProgress, fileBar, 0);
       showStatus(acceptedJob ? `Task started; waiting for progress. Status refresh failed: ${String(error)}` : `Cannot start ${kind}: ${String(error)}`, "error");
-      if (!queued) showError(String(error));
+      if (!queuedBatch) showError(String(error));
       filePercent.textContent = "0%";
     } finally {
       starting = false;
@@ -831,7 +844,7 @@ async function initialize(): Promise<void> {
       buffered.clear();
       setEncodingState(busy);
     }
-    if (queued && queuedJobId && fileQueue) return fileQueue.waitForJob(queuedJobId,
+    if (queuedBatch && queued && queuedJobId && fileQueue) return fileQueue.waitForJob(queuedJobId,
       () => invoke<BatchProgress | null>("get_batch_state"), queued.signal);
     return null;
   }
@@ -856,7 +869,11 @@ async function initialize(): Promise<void> {
   convert.addEventListener("click", () => {
     if (busy) void togglePause(); else if (fileQueue?.hasItems) void startFileQueue(); else void startEncoding("batch");
   });
-  preview.addEventListener("click", () => { void startEncoding("preview"); });
+  preview.addEventListener("click", () => {
+    const items = fileQueue?.snapshot().items ?? [];
+    const item = items.find(item => item.status === "Pending") ?? items[0];
+    void startEncoding("preview", item ? { path: item.path, signal: new AbortController().signal, subtitlePath: item.subtitlePath, selectedAudioIndex: item.selectedAudioIndex } : undefined);
+  });
   discardRecovery.addEventListener("click", async () => {
     if (!recoveryPending || recoveryAction || busy) return;
     recoveryAction = true; discardRecovery.disabled = true; resumeBatch.disabled = true;
@@ -907,10 +924,11 @@ async function initialize(): Promise<void> {
     readSettings: () => ({ video: selectedVideo(), crf: Number(quality.value), cpuMode: cpuMode.value }),
   });
   ready = true;
+  probeQueueAudio();
   setEncodingState(busy);
   try { await refreshRecovery(true); } catch (error) { showError(`Cannot load interrupted batch state: ${String(error)}`); }
   if (!import.meta.env.DEV) stopUpdates = startAutomaticUpdates({
-    canInstall: () => ready && !fileQueue?.running && !busy && !starting && !pausePending && !dropScanning && !previewLoading
+    canInstall: () => ready && !fileQueue?.running && !fileQueue?.hasPendingAudioProbes && !busy && !starting && !pausePending && !dropScanning && !previewLoading
       && !closing && !disposed && !recoveryAction && !recoveryLoading && !browseInput.disabled
       && !browseOutput.disabled && !browseSubtitles.disabled && !addFiles.disabled && !document.querySelector("dialog[open]"),
     setInstalling: (value) => {

@@ -95,6 +95,10 @@ pub(crate) struct Request {
     pipeline: String,
     quality: u8,
     #[serde(default)]
+    selected_audio_index: Option<u32>,
+    #[serde(default)]
+    preferred_audio_lang: Option<String>,
+    #[serde(default)]
     video_format: crate::VideoSettings,
     video: Fingerprint,
     subtitle: Option<Fingerprint>,
@@ -104,6 +108,10 @@ impl Request {
         Ok(Self {
             pipeline: PIPELINE.into(),
             quality: settings.crf,
+            selected_audio_index: settings.selected_audio_index,
+            preferred_audio_lang: if settings.selected_audio_index.is_none() {
+                settings.preferred_audio_lang.as_deref().map(crate::audio::normalize_language)
+            } else { None },
             video_format: settings.video.normalized(),
             video: Fingerprint::read(&item.input, false)?,
             subtitle: item
@@ -336,6 +344,8 @@ mod tests {
         };
         let settings = Settings {
             video: Default::default(),
+            selected_audio_index: None,
+            preferred_audio_lang: None,
             input_dir: video.to_string_lossy().into_owned(),
             output_dir: directory.to_string_lossy().into_owned(),
             subtitle_dir: Some(subtitle.to_string_lossy().into_owned()),
@@ -363,6 +373,12 @@ mod tests {
             assess(&registry, &item, &settings).expect("verified"),
             Match::Verified
         );
+        let mut changed_audio = settings.clone();
+        changed_audio.selected_audio_index = Some(1);
+        assert!(matches!(assess(&registry, &item, &changed_audio).expect("audio conflict"), Match::Changed(_)));
+        changed_audio.selected_audio_index = None;
+        changed_audio.preferred_audio_lang = Some("eng".into());
+        assert!(matches!(assess(&registry, &item, &changed_audio).expect("language policy conflict"), Match::Changed(_)));
         let mut changed_geometry = settings.clone();
         changed_geometry.video.auto_crop = true;
         assert!(matches!(assess(&registry, &item, &changed_geometry).expect("crop conflict"), Match::Changed(_)));
@@ -481,6 +497,8 @@ mod tests {
         };
         let settings = Settings {
             video: Default::default(),
+            selected_audio_index: None,
+            preferred_audio_lang: None,
             input_dir: video.to_string_lossy().into_owned(),
             output_dir: directory.to_string_lossy().into_owned(),
             subtitle_dir: None,

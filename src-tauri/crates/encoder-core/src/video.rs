@@ -152,6 +152,8 @@ mod tests {
         let queue = crate::BatchPlan::prepare(
             "geometry".into(),
             crate::Settings {
+                selected_audio_index: Some(1),
+                preferred_audio_lang: Some("eng".into()),
                 input_dir: input.to_string_lossy().into_owned(),
                 output_dir: root.path().join("output").to_string_lossy().into_owned(),
                 subtitle_dir: None,
@@ -171,6 +173,8 @@ mod tests {
             .resume_checked("geometry", "restored", &|| false)
             .expect("resume");
         assert_eq!(restored.settings().video, geometry);
+        assert_eq!(restored.settings().selected_audio_index, Some(1));
+        assert_eq!(restored.settings().preferred_audio_lang.as_deref(), Some("eng"));
         assert_eq!(
             restored.settings().video.filter().expect("filter"),
             queue.settings().video.filter().expect("original filter")

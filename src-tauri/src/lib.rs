@@ -34,6 +34,7 @@ pub fn run() {
             commands::pause_encode,
             commands::resume_encode,
             commands::analyze_dropped_paths,
+            commands::probe_media_streams,
             commands::get_recovery,
             commands::resume_batch,
             commands::discard_recovery,

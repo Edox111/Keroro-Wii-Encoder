@@ -2,6 +2,7 @@
 mod benchmark;
 use serde::{Deserialize, Serialize};
 pub mod artifacts;
+pub mod audio;
 pub mod atomic_file;
 mod cancel;
 pub mod crop;
@@ -85,6 +86,10 @@ pub struct Settings {
     pub subtitle_dir: Option<String>,
     #[serde(default)]
     pub anime_title: String,
+    #[serde(default)]
+    pub selected_audio_index: Option<u32>,
+    #[serde(default)]
+    pub preferred_audio_lang: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -203,6 +208,13 @@ impl BatchPlan {
         kind: TaskKind,
     ) -> Result<Self, String> {
         settings.video.validate()?;
+        if settings.selected_audio_index.is_some_and(|index| index >= audio::MAX_AUDIO_STREAMS)
+            || settings.preferred_audio_lang.as_ref().is_some_and(|value| {
+                value.len() > 16 || (audio::normalize_language(value) == "und" && value != "und")
+            })
+        {
+            return Err("Invalid audio track index or preferred language.".into());
+        }
         offline::local_path(Path::new(&settings.input_dir))?;
         offline::local_path(Path::new(&settings.output_dir))?;
         if let Some(path) = &settings.subtitle_dir {
@@ -452,6 +464,7 @@ fn process(path: &Path) -> Command {
 struct SourceInfo {
     duration: Option<f64>,
     has_audio: Option<bool>,
+    audio_streams: Option<Vec<audio::AudioStream>>,
 }
 async fn source_info(
     tools: &Tools,
@@ -467,7 +480,7 @@ async fn source_info(
             "-protocol_whitelist",
             "file,pipe",
             "-show_entries",
-            "format=duration:stream=codec_type",
+            "format=duration:stream=index,codec_type,codec_name,channels,channel_layout:stream_tags=language,title",
             "-of",
             "json",
         ])
@@ -481,6 +494,7 @@ async fn source_info(
         Err(_) => return SourceInfo::default(),
     };
     SourceInfo {
+        audio_streams: audio::parse_streams(&document).ok(),
         duration: document["format"]["duration"]
             .as_str()
             .and_then(|s| s.parse::<f64>().ok())
@@ -680,7 +694,15 @@ async fn encode_item(
         if kind == TaskKind::Preview {
             command.args(["-t", "10"]);
         }
-        profile::configure(&mut command, &filter, encoder, settings.crf, &threads, settings.video.max_fps()?);
+        let selected_audio = audio::select_index(
+            source.audio_streams.as_deref(),
+            settings.selected_audio_index,
+            settings.preferred_audio_lang.as_deref(),
+        )?;
+        profile::configure_with_audio(
+            &mut command, &filter, encoder, settings.crf, &threads,
+            settings.video.max_fps()?, selected_audio,
+        );
         let mut child = command
             .arg(&temp)
             .stdin(Stdio::piped())
@@ -1260,6 +1282,8 @@ mod tests {
                 "single-file".into(),
                 Settings {
                     video: Default::default(),
+                    selected_audio_index: None,
+                    preferred_audio_lang: None,
                     input_dir: video.to_string_lossy().into_owned(),
                     output_dir: output.to_string_lossy().into_owned(),
                     subtitle_dir: Some(sub.to_string_lossy().into_owned()),
@@ -1304,6 +1328,8 @@ mod tests {
             "folder".into(),
             Settings {
                 video: Default::default(),
+                selected_audio_index: None,
+                preferred_audio_lang: None,
                 input_dir: input.to_string_lossy().into_owned(),
                 output_dir: output.to_string_lossy().into_owned(),
                 subtitle_dir: None,
@@ -1323,6 +1349,8 @@ mod tests {
         std::fs::create_dir(&input).expect("input");
         let mut settings = Settings {
             video: Default::default(),
+            selected_audio_index: None,
+            preferred_audio_lang: None,
             input_dir: String::new(),
             output_dir: root.path().join("output").to_string_lossy().into_owned(),
             subtitle_dir: None,

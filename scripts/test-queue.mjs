@@ -5,8 +5,11 @@ import ts from "typescript";
 const matchingText = await readFile(new URL("../src/subtitle-matching.ts", import.meta.url), "utf8");
 const matchingJs = ts.transpileModule(matchingText, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ESNext } }).outputText;
 globalThis.__queueMatching = await import(`data:text/javascript;base64,${Buffer.from(matchingJs).toString("base64")}`);
+const audioJs = ts.transpileModule(await readFile(new URL("../src/audio.ts", import.meta.url), "utf8"), { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ESNext } }).outputText;
+globalThis.__queueAudio = await import(`data:text/javascript;base64,${Buffer.from(audioJs).toString("base64")}`);
 const source = (await readFile(new URL("../src/file-queue.ts", import.meta.url), "utf8"))
   .replace(/^import .*from "\.\/subtitle-matching";\r?\n/gm, "const { isSubtitleFile, matchSubtitles } = globalThis.__queueMatching;\n")
+  .replace(/^import .*from "\.\/audio";\r?\n/gm, "const { chooseAudioIndex, parseAudioStreams } = globalThis.__queueAudio;\n")
   .replace(/^import .*from "\.\/batch";\r?\n/gm, 'const isTerminal = phase => ["succeeded", "failed", "completed_with_errors", "cancelled"].includes(phase);\n');
 const { outputText } = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ESNext } });
 const { FileQueue, QueueSafetyError, parentDirectory } = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString("base64")}`);
@@ -94,3 +97,42 @@ missingPair.add(["D:/A.mp4","D:/B.mp4"], ["D:/A.ass"]);
 assert.deepEqual(missingPair.snapshot().items.map(i=>i.subtitlePath),["D:/A.ass",null]);
 delete globalThis.__queueMatching;
 console.log("Per-video subtitle assignments, independent sorted fallback, later subtitle drops, missing matches, and persistence passed.");
+
+// Audio probing must settle before queue admission; user choices survive re-probes.
+const tracks = [
+  { index: 0, streamIndex: 1, codecName: "ac3", channels: 6, channelLayout: "5.1", language: "jpn", title: "Japanese Original" },
+  { index: 1, streamIndex: 3, codecName: "aac", channels: 2, channelLayout: "stereo", language: "eng", title: "English Dub" },
+];
+const audioMemory=new Map();
+const audioStorage={getItem:k=>audioMemory.get(k)??null,setItem:(k,v)=>audioMemory.set(k,v),removeItem:k=>audioMemory.delete(k)};
+const audioQueue=new FileQueue(()=>{},audioStorage);
+audioQueue.add(["D:/one.mkv","D:/two.mkv","D:/silent.mkv","D:/broken.mkv"]);
+let probes=0,peakProbes=0,releaseProbe;
+const gate=new Promise(resolve=>releaseProbe=resolve);
+const probing=audioQueue.probePendingAudio(async path=>{probes++;peakProbes=Math.max(peakProbes,probes);await gate;probes--;if(path.includes("broken"))throw Error("Corrupt header");return path.includes("silent")?[]:tracks;},()=>"en");
+assert(audioQueue.hasPendingAudioProbes);
+let blockedCalls=0;
+await audioQueue.run(async()=>{blockedCalls++;return terminal("blocked")},path=>path);
+assert.equal(blockedCalls,0,"Start must wait for metadata");
+releaseProbe();await probing;
+assert.equal(peakProbes,2);assert(!audioQueue.hasPendingAudioProbes);
+const noOpProbe=audioQueue.probePendingAudio(async()=>{throw Error("Already probed");},()=>"eng");
+assert(!audioQueue.hasPendingAudioProbes,"Adding only subtitles must not create an empty probe task and leave Start locked");await noOpProbe;
+assert.deepEqual(audioQueue.snapshot().items.map(i=>i.selectedAudioIndex),[1,1,null,null]);
+assert.equal(audioQueue.snapshot().items[3].audioProbeState,"error");
+assert.equal(audioQueue.snapshot().items[3].status,"Pending","A probe failure must not discard a video");
+const firstAudio=audioQueue.snapshot().items[0];audioQueue.selectAudio(firstAudio.id,0);
+audioQueue.reselectAutomaticAudio("jpn");audioQueue.reselectAutomaticAudio("eng");
+assert.equal(audioQueue.snapshot().items[0].selectedAudioIndex,0,"Manual choice survives preference changes");
+assert.equal(audioQueue.snapshot().items[1].selectedAudioIndex,1);
+audioQueue.selectAudio(firstAudio.id,99);assert.equal(audioQueue.snapshot().items[0].selectedAudioIndex,0);
+const audioRestored=new FileQueue(()=>{},audioStorage);
+await audioRestored.probePendingAudio(async()=>tracks,()=>"eng");
+assert.equal(audioRestored.snapshot().items[0].selectedAudioIndex,0);
+assert(audioRestored.snapshot().items[0].audioManual);
+const removed=new FileQueue(()=>{});removed.add(["D:/removed.mkv"]);
+let finishRemoved;
+const late=removed.probePendingAudio(()=>new Promise(resolve=>finishRemoved=resolve),()=>"eng");
+removed.remove(removed.snapshot().items[0].id);assert(removed.hasPendingAudioProbes);
+finishRemoved(tracks);await late;assert(!removed.hasItems);assert(!removed.hasPendingAudioProbes);
+console.log("Audio queue admission, bounded probing, fallback, persistence, manual choice, and removal checks passed.");

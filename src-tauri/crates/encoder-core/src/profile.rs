@@ -12,8 +12,29 @@ pub(crate) fn configure(
     cpu_threads: &str,
     max_fps: u32,
 ) {
+    configure_with_audio(command, filter, encoder, crf, cpu_threads, max_fps, None);
+}
+
+pub(crate) fn configure_with_audio(
+    command: &mut Command,
+    filter: &str,
+    encoder: VideoEncoder,
+    crf: u8,
+    cpu_threads: &str,
+    max_fps: u32,
+    selected_audio_index: Option<u32>,
+) {
+    let audio_map = selected_audio_index.map(|index| format!("0:a:{index}"));
     command
-        .args(["-map", "0:v:0", "-map", "0:a:0?", "-sn", "-dn", "-vf"])
+        .args([
+            "-map",
+            "0:v:0",
+            "-map",
+            audio_map.as_deref().unwrap_or("0:a:0?"),
+            "-sn",
+            "-dn",
+            "-vf",
+        ])
         .arg(filter)
         .args(["-c:v", encoder.name()]);
     let quality = crf.to_string();
@@ -91,6 +112,30 @@ pub(crate) fn configure(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn selected_audio_uses_relative_ordinals_for_every_encoder() {
+        for encoder in [
+            VideoEncoder::Cpu,
+            VideoEncoder::Nvenc,
+            VideoEncoder::Amf,
+            VideoEncoder::Qsv,
+        ] {
+            let mut command = Command::new("not-executed-ffmpeg");
+            configure_with_audio(&mut command, VIDEO_FILTER, encoder, 23, "0", 30, Some(1));
+            let args: Vec<_> = command
+                .as_std()
+                .get_args()
+                .map(|arg| arg.to_string_lossy().into_owned())
+                .collect();
+            let maps: Vec<_> = args
+                .windows(2)
+                .filter(|pair| pair[0] == "-map")
+                .map(|pair| pair[1].as_str())
+                .collect();
+            assert_eq!(maps, ["0:v:0", "0:a:1"]);
+            assert!(!args.iter().any(|arg| arg == "0:a:0?"));
+        }
+    }
     #[test]
     fn every_encoder_uses_the_same_wiimc_output_contract() {
         for encoder in [

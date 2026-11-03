@@ -1,5 +1,6 @@
 import { isTerminal, type BatchProgress } from "./batch";
 import { isSubtitleFile, matchSubtitles } from "./subtitle-matching";
+import { chooseAudioIndex, parseAudioStreams, type AudioStream } from "./audio";
 
 export const videoExtensions = ["mp4", "mkv", "avi", "mov", "wmv", "flv", "webm"];
 export const isQueueVideo = (path: string): boolean => /\.(mp4|mkv|avi|mov|wmv|flv|webm)$/i.test(path);
@@ -11,8 +12,11 @@ export function parentDirectory(path: string): string {
   return /^(?:\\\\\?\\)?[A-Za-z]:$/.test(parent) ? parent + path[separator] : parent || path[separator];
 }
 export type QueueStatus = "Pending" | "Encoding" | "Done" | "Error";
-export interface QueueItem { id: string; path: string; status: QueueStatus; message: string; percent: number; jobId: string | null; subtitlePath?: string | null }
-export interface QueueSnapshot { items: readonly QueueItem[]; running: boolean; percent: number; label: string; complete: boolean }
+export interface QueueItem { id: string; path: string; status: QueueStatus; message: string; percent: number; jobId: string | null; subtitlePath?: string | null;
+  audioStreams?: readonly AudioStream[]; selectedAudioIndex?: number | null; audioManual?: boolean;
+  audioProbeState?: "pending" | "loading" | "ready" | "error"; audioProbeError?: string;
+}
+export interface QueueSnapshot { items: readonly QueueItem[]; running: boolean; probing: boolean; percent: number; label: string; complete: boolean }
 export class QueueSafetyError extends Error {}
 const key = "keroro.queue.v1";
 
@@ -21,6 +25,8 @@ export class FileQueue {
   private items: QueueItem[] = [];
   private nextId = 0;
   private subtitlePaths: string[] = [];
+  private probeTask: Promise<void> | null = null;
+  private probesDisposed = false;
   private abort: AbortController | null = null;
   private latest = new Map<string, BatchProgress>();
   private active: QueueItem | null = null;
@@ -45,6 +51,8 @@ export class FileQueue {
           message: value.status === "Encoding" ? "Interrupted. Existing output will be verified when restarted."
             : typeof value.message === "string" ? value.message.slice(0, 2048) : "",
           percent: status === "Done" || status === "Error" ? 100 : 0, jobId: null,
+          ...(Number.isSafeInteger(value.selectedAudioIndex) && value.selectedAudioIndex >= 0 && value.selectedAudioIndex < 256
+            ? { selectedAudioIndex: value.selectedAudioIndex, audioManual: value.audioManual === true } : {}),
           ...(value.subtitlePath === null || (typeof value.subtitlePath === "string" && isSubtitleFile(value.subtitlePath) && value.subtitlePath.length <= 32768)
             ? { subtitlePath: value.subtitlePath } : {}) });
       }
@@ -52,11 +60,12 @@ export class FileQueue {
   }
   get hasPending(): boolean { return this.items.some(item => item.status === "Pending"); }
   get hasItems(): boolean { return this.items.length > 0; }
+  get hasPendingAudioProbes(): boolean { return this.probeTask !== null || this.items.some(item => item.status === "Pending" && (item.audioProbeState === "pending" || item.audioProbeState === "loading")); }
   get paths(): string[] { return this.items.map(item => item.path); }
   snapshot(): QueueSnapshot {
     const settled = this.items.filter(item => item.status === "Done" || item.status === "Error").length;
     const current = this.active ? this.items.indexOf(this.active) + 1 : 0;
-    return { items: this.items.map(item => ({ ...item })), running: this.running,
+    return { items: this.items.map(item => ({ ...item })), running: this.running, probing: this.hasPendingAudioProbes,
       percent: this.items.length ? (settled + (this.active?.percent ?? 0) / 100) / this.items.length * 100 : 0,
       label: this.running ? `Processing ${current || Math.min(settled + 1, this.items.length)} of ${this.items.length}`
         : `${settled} of ${this.items.length} complete`,
@@ -65,7 +74,7 @@ export class FileQueue {
   private emit(persist = true): void {
     if (persist) try {
       if (this.items.length || this.subtitlePaths.length) this.storage?.setItem(key, JSON.stringify({
-        items: this.items.map(({ path, status, message, subtitlePath }) => ({ path, status, message, subtitlePath })), subtitlePaths: this.subtitlePaths,
+        items: this.items.map(({ path, status, message, subtitlePath, selectedAudioIndex, audioManual }) => ({ path, status, message, subtitlePath, selectedAudioIndex, audioManual })), subtitlePaths: this.subtitlePaths,
       }));
       else this.storage?.removeItem(key);
     } catch { /* Quota/privacy errors leave the in-memory queue usable. */ }
@@ -104,6 +113,55 @@ export class FileQueue {
     this.items.filter(item => item.status === "Pending").forEach(item => { delete item.subtitlePath; });
     this.emit();
   }
+  selectAudio(id: string, index: number): void {
+    const item = this.items.find(item => item.id === id);
+    if (this.running || !item || item.status !== "Pending" || item.audioProbeState !== "ready"
+      || !item.audioStreams?.some(stream => stream.index === index)) return;
+    item.selectedAudioIndex = index; item.audioManual = true; item.audioProbeError = ""; this.emit();
+  }
+  reselectAutomaticAudio(preferred: string): void {
+    if (this.running) return;
+    let changed = false;
+    for (const item of this.items) {
+      if (item.status !== "Pending" || item.audioManual || item.audioProbeState !== "ready") continue;
+      const selected = chooseAudioIndex(item.audioStreams ?? [], preferred);
+      if (selected !== item.selectedAudioIndex) { item.selectedAudioIndex = selected; changed = true; }
+    }
+    if (changed) this.emit();
+  }
+  probePendingAudio(probe: (path: string) => Promise<unknown>, preferred: () => string): Promise<void> {
+    if (this.running || this.probesDisposed) return Promise.resolve();
+    this.items.filter(item => item.status === "Pending" && item.audioProbeState === undefined)
+      .forEach(item => { item.audioProbeState = "pending"; });
+    if (!this.hasPendingAudioProbes) return Promise.resolve();
+    this.emit(false);
+    if (this.probeTask) return this.probeTask;
+    const worker = async () => {
+      while (!this.probesDisposed) {
+        const item = this.items.find(item => item.status === "Pending" && item.audioProbeState === "pending");
+        if (!item) return;
+        item.audioProbeState = "loading"; this.emit(false);
+        try {
+          const streams = parseAudioStreams(await probe(item.path));
+          if (this.probesDisposed || !this.items.includes(item)) continue;
+          item.audioStreams = streams;
+          if (!item.audioManual || !streams.some(stream => stream.index === item.selectedAudioIndex)) {
+            if (item.audioManual) item.audioProbeError = "Previous audio choice is unavailable. Review the current selection.";
+            item.selectedAudioIndex = chooseAudioIndex(streams, preferred()); item.audioManual = false;
+          }
+          item.audioProbeState = "ready";
+        } catch (error) {
+          if (this.probesDisposed || !this.items.includes(item)) continue;
+          if (!item.audioManual) item.selectedAudioIndex = null;
+          item.audioProbeState = "error"; item.audioProbeError = String(error).slice(0, 512);
+        }
+        this.emit();
+      }
+    };
+    this.probeTask = Promise.all([worker(), worker()]).then(() => {}).finally(() => { this.probeTask = null; this.emit(false); });
+    return this.probeTask;
+  }
+  stopProbing(): void { this.probesDisposed = true; }
   remove(id: string): void { this.items = this.items.filter(item => item.id !== id || item.status !== "Pending"); this.emit(); }
   clear(): void { if (this.snapshot().complete) { this.items = []; this.subtitlePaths = []; this.emit(); } }
   observe(progress: BatchProgress): void {
@@ -147,7 +205,7 @@ export class FileQueue {
   }
   async run(submit: (item: Readonly<QueueItem>, signal: AbortSignal) => Promise<BatchProgress>,
     outputName: (path: string) => string): Promise<void> {
-    if (this.running || !this.hasPending) return;
+    if (this.running || this.hasPendingAudioProbes || !this.hasPending) return;
     this.running = true;
     this.abort = new AbortController();
     const signal = this.abort.signal;

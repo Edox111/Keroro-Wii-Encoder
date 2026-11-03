@@ -1,0 +1,11 @@
+{
+  "version": "v1.1.0",
+  "notes": "Version 1.1.0 release with batch queue, subtitle auto-matching, and background updates.",
+  "pub_date": "2026-11-02T12:00:00Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSOHVVcFd1N1k0K0lXUnpKbjIxZndvTk9YaFYwb1JiTGJXeU0vTzFqWUFaSWY3Z1FTNGtWWXUrRFBNMnUvdDJwbUxkZ2N0cE5YSHZidkkrRzZKUVVjY3RzSVlNajJyNVE0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkzNjU4NDY0CWZpbGU6S2Vyb3JvIFdpaSBFbmNvZGVyXzEuMS4wX3g2NC1zZXR1cC5leGUJdmVyc2lvbjoxLjEuMAp0VElOdnZjTkNGRXlWQ2NKNzBoWGYrUEVvdHQvL2lXUHdIMHlxS0xOVVFwVzZzbFNmSDkxaWp5Y01GdmNiaVlTWTRENkk4OXk5Rkl0amFOcHZUYWtBQT09Cg==",
+      "url": "https://github.com/Edox111/Keroro-Wii-Encoder/releases/download/v1.1.0/Keroro.Wii.Encoder_1.1.0_x64-setup.exe"
+    }
+  }
+}

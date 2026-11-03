@@ -32,6 +32,8 @@ async fn fixture_dir(label: &str) -> PathBuf {
 fn settings(input: &Path, output: &Path) -> Settings {
     Settings {
         video: Default::default(),
+        selected_audio_index: None,
+        preferred_audio_lang: None,
         input_dir: input.to_string_lossy().into_owned(),
         output_dir: output.to_string_lossy().into_owned(),
         crf: 20,

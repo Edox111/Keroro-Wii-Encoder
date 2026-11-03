@@ -53,6 +53,8 @@ async fn high10_surround_input_becomes_main31_8bit_stereo_48k() {
     for encoder in [EncoderPreference::Cpu, EncoderPreference::Auto] {
         let output = root.path().join(format!("{encoder:?}"));
         let settings = Settings {
+            selected_audio_index: None,
+            preferred_audio_lang: None,
             input_dir: input.to_string_lossy().into_owned(),
             output_dir: output.to_string_lossy().into_owned(),
             subtitle_dir: None,

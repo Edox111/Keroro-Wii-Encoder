@@ -773,6 +773,9 @@ mod tests {
             .as_object_mut()
             .expect("settings")
             .remove("cpuMode");
+        for field in ["selectedAudioIndex", "preferredAudioLang"] {
+            value["settings"].as_object_mut().expect("settings").remove(field);
+        }
         crate::atomic_file::json(&path, &value).expect("old schema");
         let store = SessionStore::open(&state).expect("reopen");
         assert!(store.info().expect("info").expect("saved").can_resume);
@@ -821,6 +824,8 @@ mod tests {
             job_id: job.into(),
             settings: Settings {
                 video: Default::default(),
+                selected_audio_index: None,
+                preferred_audio_lang: None,
                 input_dir: input.to_string_lossy().into_owned(),
                 output_dir: output.to_string_lossy().into_owned(),
                 subtitle_dir: None,
