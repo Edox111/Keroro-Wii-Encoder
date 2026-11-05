@@ -191,6 +191,10 @@ impl SessionStore {
         let Some(intent) = checkpoint.intent.clone() else {
             return Ok(());
         };
+        crate::storage::verify_target(
+            Path::new(&checkpoint.settings.output_dir),
+            checkpoint.settings.target_volume_id.as_deref(),
+        )?;
         let item = checkpoint
             .items
             .get(intent.index)
@@ -380,6 +384,10 @@ impl SessionStore {
         deep: bool,
         cancelled: &dyn Fn() -> bool,
     ) -> Result<(), String> {
+        crate::storage::verify_target(
+            Path::new(&checkpoint.settings.output_dir),
+            checkpoint.settings.target_volume_id.as_deref(),
+        )?;
         for (index, item) in checkpoint.items.iter().enumerate() {
             if let Some(skipped) = checkpoint.skipped.get(&index) {
                 if stamp(&item.output)? != *skipped {
@@ -481,6 +489,10 @@ impl SessionStore {
             .as_mut()
             .filter(|state| state.job_id == id)
             .ok_or("Recovery checkpoint changed; reopen the prompt.")?;
+        crate::storage::verify_target(
+            Path::new(&state.settings.output_dir),
+            state.settings.target_volume_id.as_deref(),
+        )?;
         Self::reconcile(state, &self.path)?;
         let mut candidate = state.clone();
         for (index, item) in candidate.items.iter().enumerate() {
@@ -773,8 +785,16 @@ mod tests {
             .as_object_mut()
             .expect("settings")
             .remove("cpuMode");
-        for field in ["selectedAudioIndex", "preferredAudioLang"] {
-            value["settings"].as_object_mut().expect("settings").remove(field);
+        for field in [
+            "selectedAudioIndex",
+            "preferredAudioLang",
+            "selectedSubtitleIndex",
+            "preferredSubLang",
+        ] {
+            value["settings"]
+                .as_object_mut()
+                .expect("settings")
+                .remove(field);
         }
         crate::atomic_file::json(&path, &value).expect("old schema");
         let store = SessionStore::open(&state).expect("reopen");
@@ -823,8 +843,11 @@ mod tests {
         BatchPlan {
             job_id: job.into(),
             settings: Settings {
+                target_volume_id: None,
                 video: Default::default(),
                 selected_audio_index: None,
+                selected_subtitle_index: None,
+                preferred_sub_lang: None,
                 preferred_audio_lang: None,
                 input_dir: input.to_string_lossy().into_owned(),
                 output_dir: output.to_string_lossy().into_owned(),
@@ -837,6 +860,31 @@ mod tests {
             kind: TaskKind::Batch,
             warnings: Vec::new(),
         }
+    }
+    #[test]
+    fn recovery_retains_volume_identity_and_rejects_replacements_without_changing_job() {
+        let root = tempfile::tempdir().expect("fixture");
+        let directory = root.path().join("state");
+        let store = SessionStore::open(&directory).expect("store");
+        let mut plan = plan(root.path(), "original");
+        let volume = crate::storage::inspect(Path::new(&plan.settings.output_dir)).expect("volume");
+        plan.settings.target_volume_id = Some(volume.id.clone());
+        store.begin(&plan).expect("checkpoint");
+        drop(store);
+        let store = SessionStore::open(&directory).expect("reopen");
+        let restored = store.resume("original", "resumed").expect("same volume");
+        assert_eq!(restored.settings.target_volume_id, Some(volume.id));
+        store.finish("resumed").expect("finish");
+
+        plan.settings.target_volume_id = Some("replaced-volume".into());
+        store.begin(&plan).expect("simulate saved identity");
+        let saved = fs::read(&store.path).expect("saved checkpoint");
+        assert!(!store.info().expect("info").expect("checkpoint").can_resume);
+        let error = store
+            .resume("original", "rejected")
+            .expect_err("replaced drive");
+        assert!(error.contains("disconnected or replaced"));
+        assert_eq!(fs::read(&store.path).expect("unchanged checkpoint"), saved);
     }
     #[test]
     fn legacy_episode_prefix_resumes_without_renaming_the_frozen_queue() {
@@ -898,7 +946,12 @@ mod tests {
         let store = SessionStore::open(&root.path().join("state")).expect("open");
         let plan = plan(root.path(), "test");
         store.begin(&plan).expect("begin");
-        fs::write(&plan.items[1].input, b"changed source").expect("modify");
+        // The fixture must change even on filesystems with coarse timestamps.
+        fs::write(
+            &plan.items[1].input,
+            b"changed source with a different length",
+        )
+        .expect("modify");
         assert!(!store.info().expect("info").expect("checkpoint").can_resume);
         assert!(store.resume("test", "retry").is_err());
         assert!(plan.items[1].input.exists());
@@ -971,8 +1024,7 @@ mod tests {
         assert!(
             store
                 .resume("checksum", "retry")
-                .err()
-                .expect("reject")
+                .expect_err("reject")
                 .contains("checksum")
         );
         assert_eq!(fs::read(&item.output).expect("preserved"), b"modified");

@@ -57,12 +57,12 @@ impl ActiveProcess {
         }
     }
     pub(crate) fn track(self: &Arc<Self>, mut child: Child) -> Result<ProcessLease, String> {
-        if child.try_wait().map_err(|e| e.to_string())?.is_none() {
-            if let Err(error) = crate::job_fence::assign(&child) {
-                // Very short probes can exit in the spawn/assignment interval.
-                if child.try_wait().map_err(|e| e.to_string())?.is_none() {
-                    return Err(error);
-                }
+        if child.try_wait().map_err(|e| e.to_string())?.is_none()
+            && let Err(error) = crate::job_fence::assign(&child)
+        {
+            // Very short probes can exit in the spawn/assignment interval.
+            if child.try_wait().map_err(|e| e.to_string())?.is_none() {
+                return Err(error);
             }
         }
         let mut slot = self
@@ -188,10 +188,10 @@ impl Drop for ProcessLease {
             Ok(Some(_)) => {
                 slot.take();
                 drop(slot);
-                if let Some(subtitle) = subtitle {
-                    if let Err(error) = subtitle.close() {
-                        log::warn!("{error}");
-                    }
+                if let Some(subtitle) = subtitle
+                    && let Err(error) = subtitle.close()
+                {
+                    log::warn!("{error}");
                 }
                 return;
             } // Already reaped.
@@ -231,10 +231,10 @@ impl Drop for ProcessLease {
                     }
                     tokio::time::sleep(Duration::from_millis(25)).await;
                 }
-                if let Some(subtitle) = subtitle {
-                    if let Err(error) = subtitle.close() {
-                        log::error!("{error}");
-                    }
+                if let Some(subtitle) = subtitle
+                    && let Err(error) = subtitle.close()
+                {
+                    log::error!("{error}");
                 }
                 let mut slot = match state.0.lock() {
                     Ok(slot) => slot,

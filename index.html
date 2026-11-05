@@ -13,7 +13,8 @@
     <div class="container">
       <header>
         <div class="header-heading">
-          <h1>Keroro Wii Encoder <span class="app-version">v1.1.0</span></h1>
+          <h1>Keroro Wii Encoder <span class="app-version">v1.3.0</span></h1>
+          <button id="settingsBtn" type="button" class="secondary-btn" aria-haspopup="dialog" aria-controls="settingsModal" disabled>Settings</button>
         </div>
         <p class="subtitle">Downscale your anime for Nintendo Wii playback | F11 full screen</p>
         <div class="mode-switch" role="group" aria-label="Interface mode">
@@ -53,16 +54,17 @@
           <div class="input-row">
             <input type="text" id="inputFolder" placeholder="C:\Users\YourName\Videos\RawAnime" />
             <button id="browseInputBtn" class="secondary-btn">Browse folder</button>
+            <button type="button" id="addFilesBtn" class="secondary-btn" disabled>Add video files</button>
           </div>
           <p class="field-hint">Drop multiple videos to build a queue. Browse selects an input folder.</p>
-          <button type="button" id="addFilesBtn" class="secondary-btn" disabled>Add video files</button>
         </div></div>
           <div class="input-group">
           <label for="outputFolder">Save finished videos to:</label>
-          <div class="input-row">
+          <div class="input-row output-row">
             <input type="text" id="outputFolder" placeholder="C:\Users\YourName\Videos\WiiOutput" />
             <button id="browseOutputBtn" class="secondary-btn">Browse</button>
-          </div>
+          <div class="drive-target"><label class="sr-only" for="driveTarget">Wii SD / USB destination</label><select id="driveTarget" aria-describedby="driveStatus"><option value="">Output folder (manual)</option></select><meter id="driveUsage" hidden aria-label="Drive space used"></meter><small id="driveStatus" role="status"></small>
+          </div></div>
         </div>
           <section id="fileQueue" hidden aria-label="Video file queue">
             <div class="queue-actions"><span id="queueSummary" role="status"></span><button type="button" id="clearQueueBtn" class="secondary-btn" hidden>Clear Queue</button></div>
@@ -226,30 +228,38 @@
       </main>
     </div>
 
-    <dialog id="previewModal" class="preview-modal" aria-labelledby="previewHeading">
-      <div class="preview-heading">
-        <h2 id="previewHeading">10-Second Encoding Preview</h2>
-        <button type="button" id="closePreviewBtn" class="secondary-btn" aria-label="Close preview">Close</button>
+    <dialog id="previewModal" class="app-modal preview-modal" aria-labelledby="previewHeading">
+      <div class="modal-layout">
+        <header class="modal-heading"><h2 id="previewHeading">10-Second Encoding Preview</h2></header>
+        <div class="modal-body">
+          <video id="previewVideo" controls playsinline preload="metadata" aria-label="First ten seconds of the encoded video"></video>
+          <p class="field-hint">Check picture quality, aspect ratio, audio, and subtitle alignment before starting the full batch.</p>
+          <p id="previewPlaybackStatus" role="status" aria-live="polite"></p>
+        </div>
+        <footer class="modal-actions"><button type="button" id="closePreviewBtn" class="secondary-btn" aria-label="Close preview">Close</button></footer>
       </div>
-      <video id="previewVideo" controls playsinline preload="metadata" aria-label="First ten seconds of the encoded video"></video>
-      <p class="field-hint">Check picture quality, aspect ratio, audio, and subtitle alignment before starting the full batch.</p>
-      <p id="previewPlaybackStatus" role="status" aria-live="polite"></p>
     </dialog>
 
     <script type="module" src="/src/main.ts"></script>
-    <dialog id="errorModal" class="preview-modal" aria-labelledby="errorHeading">
-      <h2 id="errorHeading">Task needs attention</h2>
-      <pre id="errorMessage" class="dialog-message"></pre>
-      <button type="button" id="closeErrorBtn" class="secondary-btn">Close</button>
+    <dialog id="errorModal" class="app-modal preview-modal" aria-labelledby="errorHeading">
+      <div class="modal-layout">
+        <header class="modal-heading"><h2 id="errorHeading">Task needs attention</h2></header>
+        <div class="modal-body"><pre id="errorMessage" class="dialog-message"></pre></div>
+        <footer class="modal-actions"><button type="button" id="closeErrorBtn" class="secondary-btn">Close</button></footer>
+      </div>
     </dialog>
-    <dialog id="recoveryModal" class="preview-modal" aria-labelledby="recoveryHeading">
-      <h2 id="recoveryHeading">Interrupted batch recovery</h2>
-      <p id="recoveryMessage" class="dialog-message"></p>
-      <p class="field-hint">Resume keeps the original queue and names. Discard removes the checkpoint, preserving completed videos.</p>
-      <div class="recovery-actions">
-        <button type="button" id="resumeBatchBtn" class="primary-btn">Resume batch</button>
-        <button type="button" id="laterRecoveryBtn" class="secondary-btn">Later</button>
-        <button type="button" id="discardRecoveryBtn" class="secondary-btn">Discard checkpoint</button>
+    <dialog id="recoveryModal" class="app-modal preview-modal" aria-labelledby="recoveryHeading">
+      <div class="modal-layout">
+        <header class="modal-heading"><h2 id="recoveryHeading">Interrupted batch recovery</h2></header>
+        <div class="modal-body">
+          <p id="recoveryMessage" class="dialog-message"></p>
+          <p class="field-hint">Resume keeps the original queue and names. Discard removes the checkpoint, preserving completed videos.</p>
+        </div>
+        <footer class="modal-actions">
+          <button type="button" id="resumeBatchBtn" class="primary-btn">Resume batch</button>
+          <button type="button" id="laterRecoveryBtn" class="secondary-btn">Later</button>
+          <button type="button" id="discardRecoveryBtn" class="secondary-btn">Discard checkpoint</button>
+        </footer>
       </div>
     </dialog>
   </body>

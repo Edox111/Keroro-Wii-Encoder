@@ -94,6 +94,7 @@ async fn dual_audio_probe_preference_manual_mapping_and_checkpoint_settings() {
     ] {
         let output = root.path().join(case);
         let settings = Settings {
+            target_volume_id: None,
             input_dir: if case == "no-audio" { &silent } else { &input }
                 .to_string_lossy()
                 .into_owned(),
@@ -103,6 +104,8 @@ async fn dual_audio_probe_preference_manual_mapping_and_checkpoint_settings() {
             crf: 23,
             cpu_mode: CpuMode::Maximum,
             selected_audio_index: selected,
+            selected_subtitle_index: None,
+            preferred_sub_lang: None,
             preferred_audio_lang: Some(preferred.into()),
             video: VideoSettings {
                 encoder_override: EncoderPreference::Cpu,
@@ -156,7 +159,9 @@ async fn dual_audio_probe_preference_manual_mapping_and_checkpoint_settings() {
         assert!(pcm.status.success());
         let samples: Vec<i16> = pcm
             .stdout
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|v| i16::from_le_bytes([v[0], v[1]]))
             .collect();
         let crossings = samples

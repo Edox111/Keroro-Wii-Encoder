@@ -3,8 +3,34 @@
 pub struct ProgressGate {
     last: Option<Option<u8>>,
     last_eta: Option<Option<u64>>,
+    last_metrics: Option<(std::time::Instant, Option<u64>, Option<String>)>,
 }
 impl ProgressGate {
+    pub fn should_emit_metrics(&mut self, fps: Option<f64>, speed: Option<&str>) -> bool {
+        self.metrics_at(fps, speed, std::time::Instant::now())
+    }
+    fn metrics_at(
+        &mut self,
+        fps: Option<f64>,
+        speed: Option<&str>,
+        now: std::time::Instant,
+    ) -> bool {
+        let fps = fps
+            .filter(|value| value.is_finite() && *value >= 0.0)
+            .map(f64::to_bits);
+        if self
+            .last_metrics
+            .as_ref()
+            .is_some_and(|(last, previous_fps, previous_speed)| {
+                now.duration_since(*last) < std::time::Duration::from_secs(1)
+                    || (*previous_fps == fps && previous_speed.as_deref() == speed)
+            })
+        {
+            return false;
+        }
+        self.last_metrics = Some((now, fps, speed.map(str::to_owned)));
+        true
+    }
     pub fn should_emit(&mut self, percentage: Option<f64>) -> bool {
         let integer = percentage
             .filter(|value| value.is_finite())
@@ -96,38 +122,78 @@ pub fn format_eta(seconds: Option<f64>) -> String {
     }
 }
 
-#[derive(Clone, Default)]
-pub struct StderrProgress {
-    pub duration: Option<f64>,
+pub fn stderr_duration(line: &str) -> Option<f64> {
+    let (_, value) = line.split_once("Duration:")?;
+    timestamp_seconds(value.split(',').next()?.trim()).filter(|duration| *duration > 0.0)
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub(crate) struct Metrics {
+    pub frame: Option<u64>,
     pub position: Option<f64>,
+    pub fps: Option<f64>,
     pub speed: Option<f64>,
 }
-impl StderrProgress {
-    pub fn update(&mut self, line: &str) -> bool {
-        let mut changed = false;
-        if let Some((_, value)) = line.split_once("Duration:") {
-            self.duration = value
-                .split(',')
-                .next()
-                .and_then(|value| timestamp_seconds(value.trim()))
-                .filter(|duration| *duration > 0.0);
-            changed = true;
+
+pub(crate) async fn read(
+    reader: impl tokio::io::AsyncRead + Unpin,
+    mut on_progress: impl FnMut(Metrics),
+) -> Result<(), String> {
+    let mut metrics = Metrics::default();
+    crate::pipe_lines::read(reader, 256, |line, truncated| {
+        if truncated {
+            return;
         }
-        if let Some((_, value)) = line.split_once("time=") {
-            self.position = value.split_whitespace().next().and_then(timestamp_seconds);
-            changed = true;
+        let Some((key, value)) = line.split_once('=') else {
+            return;
+        };
+        let value = value.trim();
+        let number = || {
+            value
+                .parse::<f64>()
+                .ok()
+                .filter(|v| v.is_finite() && *v >= 0.0)
+        };
+        match key {
+            "frame" => metrics.frame = value.parse().ok(),
+            "fps" => metrics.fps = number(),
+            "out_time_us" => metrics.position = number().map(|time| time / 1_000_000.0),
+            "out_time" if metrics.position.is_none() => metrics.position = timestamp_seconds(value),
+            "speed" => metrics.speed = speed_factor(value),
+            "progress" if matches!(value, "continue" | "end") => {
+                on_progress(metrics);
+                metrics = Metrics::default();
+            }
+            _ => {}
         }
-        if let Some((_, value)) = line.split_once("speed=") {
-            self.speed = value.split_whitespace().next().and_then(speed_factor);
-            changed = true;
-        }
-        changed
-    }
+    })
+    .await
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn metrics_refresh_when_duration_is_unknown_without_event_spam() {
+        let mut gate = ProgressGate::default();
+        let now = std::time::Instant::now();
+        assert!(gate.metrics_at(Some(24.0), Some("1x"), now));
+        assert!(!gate.metrics_at(
+            Some(48.0),
+            Some("2x"),
+            now + std::time::Duration::from_millis(250)
+        ));
+        assert!(gate.metrics_at(
+            Some(48.0),
+            Some("2x"),
+            now + std::time::Duration::from_secs(1)
+        ));
+        assert!(!gate.metrics_at(
+            Some(48.0),
+            Some("2x"),
+            now + std::time::Duration::from_secs(2)
+        ));
+    }
     #[test]
     fn eta_changes_are_visible_without_duplicate_subsecond_events() {
         let mut gate = ProgressGate::default();
@@ -139,33 +205,68 @@ mod tests {
         assert!(!gate.should_emit_eta(Some(134.9)));
         assert!(gate.should_emit_eta(Some(0.0)));
     }
-    #[test]
-    fn stderr_duration_time_speed_and_eta_are_parsed_without_inventing_values() {
-        let mut progress = StderrProgress::default();
-        assert!(progress.update("[info] Duration: 00:04:30.00, start: 0.000, bitrate: 123"));
-        assert!(progress.update("frame= 42 fps=30 time=00:02:15.00 bitrate=123kbits/s speed=1.0x"));
+    #[tokio::test]
+    async fn structured_records_reset_unknown_values_and_keep_timestamp_fallback() {
+        let input = b"frame=42\nfps= 48.2\nout_time_us=30000000\nout_time=00:00:30.000000\nspeed= 1.85x\nprogress=continue\nframe=90\nfps=NaN\nout_time_us=N/A\nout_time=00:01:00.0\nspeed=N/A\nprogress=end\n";
+        let mut records = Vec::new();
+        read(input.as_slice(), |metrics| records.push(metrics))
+            .await
+            .unwrap();
+        assert_eq!(records.len(), 2);
         assert_eq!(
-            eta_seconds(progress.position, progress.duration, progress.speed),
-            Some(135.0)
+            records[0],
+            Metrics {
+                frame: Some(42),
+                position: Some(30.0),
+                fps: Some(48.2),
+                speed: Some(1.85)
+            }
         );
+        assert_eq!(
+            records[1],
+            Metrics {
+                frame: Some(90),
+                position: Some(60.0),
+                fps: None,
+                speed: None
+            }
+        );
+        assert_eq!(
+            eta_seconds(records[0].position, Some(67.0), records[0].speed),
+            Some(20.0)
+        );
+    }
+
+    #[tokio::test]
+    async fn oversized_records_do_not_block_later_progress() {
+        let mut input = vec![b'x'; 200_000];
+        input.extend_from_slice(b"\nfps=30\nprogress=end");
+        let mut records = Vec::new();
+        read(input.as_slice(), |metrics| records.push(metrics))
+            .await
+            .unwrap();
+        assert_eq!(
+            records,
+            [Metrics {
+                fps: Some(30.0),
+                ..Metrics::default()
+            }]
+        );
+    }
+
+    #[test]
+    fn duration_speed_and_eta_reject_unknown_values() {
+        assert_eq!(
+            stderr_duration("Duration: 00:04:30.00, start: 0.00"),
+            Some(270.0)
+        );
+        assert_eq!(stderr_duration("Duration: N/A"), None);
+        assert_eq!(stderr_duration("[libass] fontselect: Arial"), None);
         assert_eq!(format_eta(Some(135.0)), "02m 15s");
-        assert_eq!(eta_seconds(Some(30.0), Some(90.0), Some(2.0)), Some(30.0));
         assert_eq!(format_eta(Some(3723.1)), "01h 02m 04s");
-        progress.update("time=N/A speed=0x");
-        assert!(eta_seconds(progress.position, progress.duration, progress.speed).is_none());
         assert_eq!(format_eta(None), "--");
         assert_eq!(speed_factor("NaNx"), None);
         assert_eq!(speed_factor("1xxx"), None);
-        for noise in [
-            "[warning] A subtitle font was substituted",
-            "[libass] fontselect: Arial",
-            "[error] recoverable decoder diagnostic",
-        ] {
-            assert!(!progress.update(noise));
-        }
-        assert_eq!(progress.duration, Some(270.0));
-        assert_eq!(progress.position, None);
-        assert_eq!(progress.speed, None);
         assert_eq!(eta_seconds(Some(0.0), Some(f64::INFINITY), Some(1.0)), None);
     }
     #[test]

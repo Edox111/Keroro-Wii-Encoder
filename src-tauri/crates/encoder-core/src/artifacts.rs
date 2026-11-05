@@ -193,11 +193,11 @@ impl ArtifactStore {
                 continue;
             }
             log::info!("Removed owned orphan {}", entry.path.display());
-            if entry.path.starts_with(self.workspace()) {
-                if let Some(parent) = entry.path.parent() {
-                    let _ = fs::remove_dir(parent);
-                } // Empty only; never recursive.
-            }
+            if entry.path.starts_with(self.workspace())
+                && let Some(parent) = entry.path.parent()
+            {
+                let _ = fs::remove_dir(parent);
+            } // Empty only; never recursive.
         }
         *entries = retained;
         crate::atomic_file::json(&self.ledger, &*entries)?;

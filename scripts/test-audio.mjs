@@ -27,13 +27,41 @@ assert.deepEqual(audio.subtitleSuggestionForAudio(streams[0],"en"),{language:"en
 assert.equal(audio.subtitleSuggestionForAudio(streams[1],"eng").recommendSubtitles,false);
 const settings=await import(await moduleUrl("language-preferences"));
 const prefs=await import(await moduleUrl("preferences"));
-assert.deepEqual(settings.getLanguagePreferences(),{preferredAudioLang:"eng",preferredSubLang:"eng"});
+assert.deepEqual(settings.getLanguagePreferences(),{hardwareEncoder:"auto",autoRouteWiiDrive:false,preferredAudioLang:"jpn",preferredSubLang:"eng",defaultOutputDir:"",playSoundOnComplete:true,openFolderOnComplete:true});
 let changes=0;const unsubscribe=settings.subscribeLanguagePreferences(()=>changes++);
-settings.updateLanguagePreferences({preferredAudioLang:"ja",preferredSubLang:"en-US"});
-assert.deepEqual(settings.getLanguagePreferences(),{preferredAudioLang:"jpn",preferredSubLang:"eng"});
+settings.updateLanguagePreferences({preferredAudioLang:"eng",preferredSubLang:"en-US"});
+assert.deepEqual(settings.getLanguagePreferences(),{hardwareEncoder:"auto",autoRouteWiiDrive:false,preferredAudioLang:"eng",preferredSubLang:"eng",defaultOutputDir:"",playSoundOnComplete:true,openFolderOnComplete:true});
 assert.equal(changes,1);prefs.savePreferences({animeTitle:"Test"});assert.equal(changes,1);
-assert.equal(JSON.parse(memory.get("keroro.preferences.v1")).preferredAudioLang,"jpn");
+assert.equal(JSON.parse(memory.get("keroro.preferences.v1")).preferredAudioLang,"eng");
 assert.throws(()=>settings.updateLanguagePreferences({preferredAudioLang:"not a language"}));
 unsubscribe();settings.updateLanguagePreferences({preferredAudioLang:"eng"});assert.equal(changes,1);
 const stable=settings.getLanguagePreferences();assert.equal(stable,settings.getLanguagePreferences(),"Stable snapshot for future useSyncExternalStore");
 console.log("Audio language aliases, labels, validation, default fallback, subtitle suggestions, and persistent settings passed.");
+
+settings.updateLanguagePreferences({preferredAudioLang:"any",preferredSubLang:"none",defaultOutputDir:"D:/Wii Videos"});
+assert.deepEqual(settings.getLanguagePreferences(),{hardwareEncoder:"auto",autoRouteWiiDrive:false,preferredAudioLang:"any",preferredSubLang:"none",defaultOutputDir:"D:/Wii Videos",playSoundOnComplete:true,openFolderOnComplete:true});
+const reloaded=await import((await moduleUrl("preferences"))+"#preferences-reload");
+assert.equal(reloaded.getPreferences().preferredSubLang,"none");
+assert.equal(reloaded.getPreferences().defaultOutputDir,"D:/Wii Videos");
+assert.throws(()=>settings.updateLanguagePreferences({defaultOutputDir:"bad"+String.fromCharCode(0)}));
+console.log("Any/None settings and default output persistence passed.");
+
+settings.updateLanguagePreferences({playSoundOnComplete:false,openFolderOnComplete:false});
+const savedActions=JSON.parse(memory.get("keroro.preferences.v1"));
+assert.equal(savedActions.playSoundOnComplete,false);assert.equal(savedActions.openFolderOnComplete,false);
+const actionReload=await import((await moduleUrl("preferences"))+"#completion-reload");
+assert.equal(actionReload.getPreferences().playSoundOnComplete,false);assert.equal(actionReload.getPreferences().openFolderOnComplete,false);
+assert.throws(()=>settings.updateLanguagePreferences({playSoundOnComplete:"yes"}));
+console.log("Completion action defaults, validation, and false-value persistence passed.");
+
+settings.updateLanguagePreferences({hardwareEncoder:"qsv",autoRouteWiiDrive:true});
+assert.equal(prefs.getPreferences().hardwareEncoder,"qsv");
+assert.equal(prefs.getPreferences().video.encoderOverride,"qsv");
+assert.equal(JSON.parse(memory.get("keroro.preferences.v1")).autoRouteWiiDrive,true);
+assert.throws(()=>settings.updateLanguagePreferences({hardwareEncoder:"injected"}));
+prefs.savePreferences({video:{...prefs.getPreferences().video,encoderOverride:"cpu"}});
+settings.updateLanguagePreferences({hardwareEncoder:"qsv",playSoundOnComplete:true});
+assert.equal(prefs.getPreferences().video.encoderOverride,"cpu","Saving unrelated preferences must preserve the advanced encoder override");
+settings.updateLanguagePreferences({hardwareEncoder:"nvenc"});
+assert.equal(prefs.getPreferences().video.encoderOverride,"nvenc","An explicit encoder preference change updates the default");
+console.log("Hardware preference changes preserve unrelated manual overrides.");

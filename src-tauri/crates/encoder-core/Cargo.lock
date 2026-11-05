@@ -142,6 +142,7 @@ version = "1.0.0"
 dependencies = [
  "encoding_rs",
  "getrandom",
+ "libc",
  "log",
  "num_cpus",
  "regex",

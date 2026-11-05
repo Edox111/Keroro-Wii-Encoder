@@ -151,8 +151,11 @@ async fn directory() -> PathBuf {
 }
 fn settings(input: &Path, output: &Path, subtitles: Option<&Path>) -> Settings {
     Settings {
+        target_volume_id: None,
         video: Default::default(),
         selected_audio_index: None,
+        selected_subtitle_index: None,
+        preferred_sub_lang: None,
         preferred_audio_lang: None,
         input_dir: input.to_string_lossy().into_owned(),
         output_dir: output.to_string_lossy().into_owned(),
@@ -1021,7 +1024,9 @@ async fn aspect_presets_preserve_display_shape_burn_subtitles_and_obey_main31() 
         assert!(
             frame
                 .stdout
-                .chunks_exact(3)
+                .as_chunks::<3>()
+                .0
+                .iter()
                 .filter(|p| p.iter().all(|v| *v > 180))
                 .count()
                 > 30,

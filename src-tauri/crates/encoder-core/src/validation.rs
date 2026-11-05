@@ -71,12 +71,12 @@ fn check(
     let duration = number(&document["format"]["duration"])
         .filter(|d| *d > 0.0)
         .ok_or("Output has no positive duration.")?;
-    if let Some(expected) = expected.filter(|d| d.is_finite() && *d > 0.0) {
-        if (duration - expected).abs() > (expected * 0.1).max(2.0) {
-            return Err(format!(
-                "Output duration {duration:.2}s differs substantially from expected {expected:.2}s; partial output was rejected."
-            ));
-        }
+    if let Some(expected) = expected.filter(|d| d.is_finite() && *d > 0.0)
+        && (duration - expected).abs() > (expected * 0.1).max(2.0)
+    {
+        return Err(format!(
+            "Output duration {duration:.2}s differs substantially from expected {expected:.2}s; partial output was rejected."
+        ));
     }
     if bytes == 0 {
         return Err("Output is empty.".into());
@@ -113,11 +113,6 @@ pub(crate) async fn validate(
     check(&document, expected, bytes, geometry)
 }
 pub(crate) const FAT32_MAX_BYTES: u64 = u32::MAX as u64;
-pub(crate) fn projected_fat32_warning(duration: Option<f64>) -> Option<String> {
-    duration.filter(|d| d.is_finite() && *d > 0.0)
-        .filter(|d| d * (3_200_000.0 + 160_000.0) / 8.0 * 1.02 > FAT32_MAX_BYTES as f64)
-        .map(|_| "This long encode may exceed FAT32's single-file limit at the selected bitrate cap. Consider shorter source segments if the Wii drive uses FAT32; the actual output size will also be checked.".into())
-}
 pub(crate) fn fat32_warning(bytes: u64) -> Option<String> {
     (bytes > FAT32_MAX_BYTES).then(|| "Output exceeds FAT32's 4 GiB minus 1 byte file limit. Split or shorten it before copying to a FAT32 Wii drive.".into())
 }

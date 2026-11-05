@@ -7,8 +7,15 @@ const matchingJs = ts.transpileModule(matchingText, { compilerOptions: { target:
 globalThis.__queueMatching = await import(`data:text/javascript;base64,${Buffer.from(matchingJs).toString("base64")}`);
 const audioJs = ts.transpileModule(await readFile(new URL("../src/audio.ts", import.meta.url), "utf8"), { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ESNext } }).outputText;
 globalThis.__queueAudio = await import(`data:text/javascript;base64,${Buffer.from(audioJs).toString("base64")}`);
+const mediaJs = ts.transpileModule("const { normalizeLanguage, parseAudioStreams } = globalThis.__queueAudio;\n" + (await readFile(new URL("../src/media-streams.ts", import.meta.url), "utf8")).split("\n").slice(1).join("\n"), { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ESNext } }).outputText;
+globalThis.__queueMedia = await import(`data:text/javascript;base64,${Buffer.from(mediaJs).toString("base64")}`);
+const driveText = (await readFile(new URL("../src/drive-selector.ts", import.meta.url), "utf8")).split("const gb =")[0].replace(/^import .*;\r?\n/gm, "");
+const driveJs = ts.transpileModule(driveText, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ESNext } }).outputText;
+globalThis.__queueDrive = await import(`data:text/javascript;base64,${Buffer.from(driveJs).toString("base64")}`);
 const source = (await readFile(new URL("../src/file-queue.ts", import.meta.url), "utf8"))
+  .replace(/^import .*from "\.\/drive-selector";\r?\n/gm, "const { fat32Warning } = globalThis.__queueDrive;\n")
   .replace(/^import .*from "\.\/subtitle-matching";\r?\n/gm, "const { isSubtitleFile, matchSubtitles } = globalThis.__queueMatching;\n")
+  .replace(/^import .*from "\.\/media-streams";\r?\n/gm, "const { parseMediaInfo, chooseSubtitleIndex } = globalThis.__queueMedia;\n")
   .replace(/^import .*from "\.\/audio";\r?\n/gm, "const { chooseAudioIndex, parseAudioStreams } = globalThis.__queueAudio;\n")
   .replace(/^import .*from "\.\/batch";\r?\n/gm, 'const isTerminal = phase => ["succeeded", "failed", "completed_with_errors", "cancelled"].includes(phase);\n');
 const { outputText } = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ESNext } });
@@ -136,3 +143,88 @@ const late=removed.probePendingAudio(()=>new Promise(resolve=>finishRemoved=reso
 removed.remove(removed.snapshot().items[0].id);assert(removed.hasPendingAudioProbes);
 finishRemoved(tracks);await late;assert(!removed.hasItems);assert(!removed.hasPendingAudioProbes);
 console.log("Audio queue admission, bounded probing, fallback, persistence, manual choice, and removal checks passed.");
+
+const subtitleTracks=[
+ {index:0,streamIndex:4,codecName:"subrip",language:"jpn",title:"Japanese",supported:true},
+ {index:1,streamIndex:5,codecName:"ass",language:"eng",title:"English",supported:true},
+ {index:2,streamIndex:6,codecName:"hdmv_pgs_subtitle",language:"eng",title:null,supported:false},
+];
+const media={audioStreams:tracks,subtitleStreams:subtitleTracks};
+const {parseMediaInfo,chooseSubtitleIndex}=globalThis.__queueMedia;
+assert.equal(parseMediaInfo(media).subtitleStreams.length,3);
+assert.equal(chooseSubtitleIndex(subtitleTracks,"en",false),1);
+assert.equal(chooseSubtitleIndex(subtitleTracks,"deu",false),0);
+assert.equal(chooseSubtitleIndex(subtitleTracks,"eng",true),null);
+assert.equal(chooseSubtitleIndex(subtitleTracks,"none",false),null);
+assert.throws(()=>parseMediaInfo({...media,subtitleStreams:[{...subtitleTracks[0],index:7}]}));
+const subQueue=new FileQueue(()=>{},audioStorage);subQueue.add(["D:/subs-new/Episode_03.mkv"]);
+await subQueue.probePendingAudio(async()=>media,()=>"jpn",()=>"eng");
+const subItem=subQueue.snapshot().items.find(i=>i.path.includes("subs-new"));
+assert.equal(subItem.selectedSubtitleIndex,1);
+subQueue.selectSubtitle(subItem.id,0);subQueue.reselectAutomaticSubtitles("eng");
+assert.equal(subQueue.snapshot().items.find(i=>i.id===subItem.id).selectedSubtitleIndex,0,"Manual embedded choice wins");
+subQueue.selectSubtitle(subItem.id,null);subQueue.reselectAutomaticSubtitles("eng");
+assert.equal(subQueue.snapshot().items.find(i=>i.id===subItem.id).selectedSubtitleIndex,null,"Manual None wins");
+subQueue.selectSubtitle(subItem.id,2);assert.equal(subQueue.snapshot().items.find(i=>i.id===subItem.id).selectedSubtitleIndex,null,"Bitmap track cannot be selected");
+const subRestored=new FileQueue(()=>{},audioStorage);await subRestored.probePendingAudio(async()=>media,()=>"jpn",()=>"eng");
+assert.equal(subRestored.snapshot().items.find(i=>i.path.includes("subs-new")).selectedSubtitleIndex,null,"Manual None survives restart");
+const externalQueue=new FileQueue(()=>{});externalQueue.add(["D:/media/Ep01.mkv"]);
+await externalQueue.probePendingAudio(async()=>media,()=>"jpn",()=>"eng");
+externalQueue.add([], ["D:/external/Ep01.jpn.ass","D:/external/Ep01.eng.srt"], "eng");
+externalQueue.reselectAutomaticSubtitles("eng");
+assert.equal(externalQueue.snapshot().items[0].subtitlePath,"D:/external/Ep01.eng.srt");
+assert.equal(externalQueue.snapshot().items[0].selectedSubtitleIndex,null,"Later external match overrides automatic embedded selection");
+externalQueue.reselectAutomaticSubtitles("jpn");assert.equal(externalQueue.snapshot().items[0].subtitlePath,"D:/external/Ep01.jpn.ass");
+console.log("Unified probing, subtitle preference/fallback, unsupported tracks, manual None persistence, and language-tagged external matching passed.");
+
+assert(queue.completedNormally,"Whole queue with isolated errors finishes normally");
+assert(!stopped.completedNormally,"Cancelled queue must not run completion actions");
+assert(!fatal.completedNormally,"Lost process state must not run completion actions");
+const cancelledTerminal=new FileQueue(()=>{});cancelledTerminal.add(["D:/cancelled.mkv"]);
+await cancelledTerminal.run(async()=>({...terminal("cancelled"),phase:"cancelled",message:"Cancelled"}),path=>path);
+assert(!cancelledTerminal.completedNormally,"A last-item cancellation is not normal completion even if all rows are settled");
+console.log("Completion lifecycle differentiates settled per-file errors from cancellation/safety stops.");
+
+const orderedSnapshots = [];
+const ordered = new FileQueue(snapshot => orderedSnapshots.push(snapshot));
+ordered.add(["D:/Ep01.mkv"]);
+const orderedRun = ordered.run((item, signal) => ordered.waitForJob("ordered", async () => null, signal), path => path);
+await tick();
+const stats = (sequence, progressPercent) => ({ jobId: "ordered", sequence, phase: "running", progressPercent, fps: 48, speed: 2, etaSeconds: 30, paused: false });
+ordered.observeEncoding(stats(10, 60));
+const events = orderedSnapshots.length;
+ordered.observeEncoding(stats(9, 40));
+ordered.observeEncoding(stats(10, 50));
+assert.equal(orderedSnapshots.length, events, "Stale or duplicate stats do not render");
+ordered.observe({ ...terminal("ordered"), sequence: 8, phase: "running", batchPercent: 25 });
+assert.equal(ordered.snapshot().items[0].percent, 60, "Delayed full progress cannot rewind newer metrics");
+ordered.observeEncoding(stats(11, 60));
+assert.equal(orderedSnapshots.length, events, "Identical metric values do not render twice");
+ordered.observe({ ...terminal("ordered"), sequence: 12 });
+await orderedRun;
+assert(ordered.completedNormally);
+console.log("Progress ordering tests passed: duplicate events and cross-channel regressions are ignored.");
+
+const hardwareQueue = new FileQueue(()=>{});
+hardwareQueue.add(["D:/Ep03.mkv"]);
+await hardwareQueue.probePendingAudio(async()=>({audioStreams:[],subtitleStreams:[],durationSeconds:10000}),()=>"jpn");
+hardwareQueue.setOutputVolume({id:"sd",root:"E:/",label:"Wii",fileSystem:"FAT32",totalBytes:32000000000,availableBytes:16000000000});
+assert.match(hardwareQueue.snapshot().items[0].storageWarning,/FAT32 4GB Warning/);
+hardwareQueue.setOutputVolume({id:"pc",root:"D:/",label:"PC",fileSystem:"NTFS",totalBytes:32000000000,availableBytes:16000000000});
+assert.equal(hardwareQueue.snapshot().items[0].storageWarning,null);
+const trace=Array.from({length:100},(_,i)=>`stderr ${i+1}`).join("\n");
+await hardwareQueue.run(async()=>({...terminal("bad",true),errors:[{reason:`FFmpeg failed.\n\nFFmpeg stderr:\n${trace}`}]}),()=>"Ep03.mp4");
+let failed=hardwareQueue.snapshot().items[0];
+assert.equal(failed.message,"FFmpeg failed.");assert(failed.errorLog.endsWith("stderr 100"));
+hardwareQueue.retry(failed.id);
+assert.equal(hardwareQueue.snapshot().items[0].status,"Pending");assert.equal(hardwareQueue.snapshot().items[0].errorLog,"");
+await hardwareQueue.probePendingAudio(async()=>({audioStreams:[],subtitleStreams:[]}),()=>"jpn");
+const pausedRun=hardwareQueue.run(async(item,signal)=>hardwareQueue.waitForJob("pause-test",async()=>null,signal),()=>"Ep03.mp4");
+await tick();
+hardwareQueue.observe({kind:"batch",jobId:"pause-test",sequence:1,phase:"running",paused:true,batchPercent:40});
+assert.equal(hardwareQueue.snapshot().items[0].status,"Paused");
+hardwareQueue.observe({kind:"batch",jobId:"pause-test",sequence:2,phase:"running",paused:false,batchPercent:40});
+assert.equal(hardwareQueue.snapshot().items[0].status,"Encoding");
+hardwareQueue.observe(terminal("pause-test"));await pausedRun;
+assert.equal(hardwareQueue.snapshot().items[0].status,"Done");
+console.log("FAT32 badges, diagnostic tails, failed-item retry, and queue pause/resume passed.");

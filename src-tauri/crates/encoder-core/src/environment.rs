@@ -23,8 +23,7 @@ mod tests {
         assert!(
             validate_binary(&binary, "ffmpeg")
                 .await
-                .err()
-                .expect("missing")
+                .expect_err("missing")
                 .contains("ENVIRONMENT_UNAVAILABLE")
         );
         tokio::fs::write(&binary, []).await.expect("empty");

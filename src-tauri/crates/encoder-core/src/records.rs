@@ -7,7 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const PIPELINE: &str = "wiimc-h264-main31-sd-420-vbv3200-aac160-48k-v2";
+const PIPELINE: &str = "wiimc-h264-main31-sd-420-vbv3200-aac160-48k-v3";
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 struct Fingerprint {
     path: PathBuf,
@@ -97,6 +97,10 @@ pub(crate) struct Request {
     #[serde(default)]
     selected_audio_index: Option<u32>,
     #[serde(default)]
+    selected_subtitle_index: Option<u32>,
+    #[serde(default)]
+    preferred_sub_lang: Option<String>,
+    #[serde(default)]
     preferred_audio_lang: Option<String>,
     #[serde(default)]
     video_format: crate::VideoSettings,
@@ -109,9 +113,20 @@ impl Request {
             pipeline: PIPELINE.into(),
             quality: settings.crf,
             selected_audio_index: settings.selected_audio_index,
+            selected_subtitle_index: settings.selected_subtitle_index,
+            preferred_sub_lang: if settings.selected_subtitle_index.is_none() {
+                settings.preferred_sub_lang.clone()
+            } else {
+                None
+            },
             preferred_audio_lang: if settings.selected_audio_index.is_none() {
-                settings.preferred_audio_lang.as_deref().map(crate::audio::normalize_language)
-            } else { None },
+                settings
+                    .preferred_audio_lang
+                    .as_deref()
+                    .map(crate::audio::normalize_language)
+            } else {
+                None
+            },
             video_format: settings.video.normalized(),
             video: Fingerprint::read(&item.input, false)?,
             subtitle: item
@@ -343,8 +358,11 @@ mod tests {
             validation_error: None,
         };
         let settings = Settings {
+            target_volume_id: None,
             video: Default::default(),
             selected_audio_index: None,
+            selected_subtitle_index: None,
+            preferred_sub_lang: None,
             preferred_audio_lang: None,
             input_dir: video.to_string_lossy().into_owned(),
             output_dir: directory.to_string_lossy().into_owned(),
@@ -373,18 +391,36 @@ mod tests {
             assess(&registry, &item, &settings).expect("verified"),
             Match::Verified
         );
+        let mut changed_subtitle = settings.clone();
+        changed_subtitle.selected_subtitle_index = Some(1);
+        assert!(matches!(
+            assess(&registry, &item, &changed_subtitle).expect("embedded track conflict"),
+            Match::Changed(_)
+        ));
         let mut changed_audio = settings.clone();
         changed_audio.selected_audio_index = Some(1);
-        assert!(matches!(assess(&registry, &item, &changed_audio).expect("audio conflict"), Match::Changed(_)));
+        assert!(matches!(
+            assess(&registry, &item, &changed_audio).expect("audio conflict"),
+            Match::Changed(_)
+        ));
         changed_audio.selected_audio_index = None;
         changed_audio.preferred_audio_lang = Some("eng".into());
-        assert!(matches!(assess(&registry, &item, &changed_audio).expect("language policy conflict"), Match::Changed(_)));
+        assert!(matches!(
+            assess(&registry, &item, &changed_audio).expect("language policy conflict"),
+            Match::Changed(_)
+        ));
         let mut changed_geometry = settings.clone();
         changed_geometry.video.auto_crop = true;
-        assert!(matches!(assess(&registry, &item, &changed_geometry).expect("crop conflict"), Match::Changed(_)));
+        assert!(matches!(
+            assess(&registry, &item, &changed_geometry).expect("crop conflict"),
+            Match::Changed(_)
+        ));
         changed_geometry.video = settings.video.clone();
         changed_geometry.video.encoder_override = crate::video::EncoderPreference::Cpu;
-        assert!(matches!(assess(&registry, &item, &changed_geometry).expect("encoder conflict"), Match::Changed(_)));
+        assert!(matches!(
+            assess(&registry, &item, &changed_geometry).expect("encoder conflict"),
+            Match::Changed(_)
+        ));
         changed_geometry.video = settings.video.clone();
         changed_geometry.video.resolution_preset = crate::ResolutionPreset::Wide;
         assert!(matches!(
@@ -496,8 +532,11 @@ mod tests {
             validation_error: None,
         };
         let settings = Settings {
+            target_volume_id: None,
             video: Default::default(),
             selected_audio_index: None,
+            selected_subtitle_index: None,
+            preferred_sub_lang: None,
             preferred_audio_lang: None,
             input_dir: video.to_string_lossy().into_owned(),
             output_dir: directory.to_string_lossy().into_owned(),

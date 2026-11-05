@@ -14,6 +14,24 @@ use std::{
 };
 use tauri::{AppHandle, Emitter, Manager, WebviewWindow};
 
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct EncodingProgress<'a> {
+    file: String,
+    percentage: Option<f64>,
+    file_id: String,
+    progress_percent: Option<f64>,
+    fps: Option<f64>,
+    frame: Option<u64>,
+    speed: Option<f64>,
+    eta_seconds: Option<f64>,
+    eta: String,
+    job_id: &'a str,
+    sequence: u64,
+    phase: &'a Phase,
+    paused: bool,
+}
+
 pub(super) fn publish(manager: &BatchManager, window: &WebviewWindow, mut progress: Progress) {
     let tooltip = match manager.0.lock() {
         Ok(mut state) => {
@@ -70,12 +88,11 @@ pub(super) fn publish(manager: &BatchManager, window: &WebviewWindow, mut progre
             return;
         }
     };
-    if let Some(tooltip) = tooltip {
-        if let Some(tray) = window.app_handle().tray_by_id("keroro-tray") {
-            if let Err(error) = tray.set_tooltip(Some(tooltip)) {
-                log::warn!("Cannot update tray tooltip: {error}");
-            }
-        }
+    if let Some(tooltip) = tooltip
+        && let Some(tray) = window.app_handle().tray_by_id("keroro-tray")
+        && let Err(error) = tray.set_tooltip(Some(tooltip))
+    {
+        log::warn!("Cannot update tray tooltip: {error}");
     }
     emit_progress(window, &progress);
 }
@@ -87,15 +104,24 @@ pub(super) fn emit_progress(window: &WebviewWindow, progress: &Progress) {
         log::error!("Cannot deliver progress: {error}");
     }
     if progress.kind == TaskKind::Batch {
-        let payload = serde_json::json!({
-            "file": format!("Ep{:02}", progress.current_file.max(1)),
-            "percentage": progress.file_percent,
-            "eta": keroro_encoder_core::progress::format_eta(progress.eta_seconds),
-            "jobId": progress.job_id,
-            "sequence": progress.sequence,
-            "phase": progress.phase,
-            "paused": progress.paused,
-        });
+        let payload = EncodingProgress {
+            file: format!("Ep{:02}", progress.current_file.max(1)),
+            percentage: progress.file_percent,
+            file_id: format!("{}:{}", progress.job_id, progress.current_file),
+            progress_percent: progress.file_percent,
+            fps: progress.fps,
+            frame: progress.frame,
+            speed: progress
+                .speed
+                .as_deref()
+                .and_then(keroro_encoder_core::progress::speed_factor),
+            eta_seconds: progress.eta_seconds,
+            eta: keroro_encoder_core::progress::format_eta(progress.eta_seconds),
+            job_id: &progress.job_id,
+            sequence: progress.sequence,
+            phase: &progress.phase,
+            paused: progress.paused,
+        };
         if let Err(error) = window.emit("encoding-progress", payload) {
             log::warn!("Cannot deliver ETA progress: {error}");
         }
@@ -157,10 +183,10 @@ pub(super) async fn cleanup_saved_preview(manager: &BatchManager) {
             None
         }
     };
-    if let Some(file) = file {
-        if let Err(error) = remove_preview(file).await {
-            log::error!("{error}");
-        }
+    if let Some(file) = file
+        && let Err(error) = remove_preview(file).await
+    {
+        log::error!("{error}");
     }
 }
 
@@ -193,6 +219,12 @@ pub(super) async fn start_task(
         let stop = cancellation.clone();
         let plan = keroro_encoder_core::session::blocking(move || {
             store.resume_checked(&resume_id, &id, &|| stop.is_cancelled())
+        })
+        .await?;
+        let output = PathBuf::from(&plan.settings().output_dir);
+        let volume_id = plan.settings().target_volume_id.clone();
+        keroro_encoder_core::session::blocking(move || {
+            keroro_encoder_core::storage::verify_target(&output, volume_id.as_deref())
         })
         .await?;
         keroro_encoder_core::preflight::output(std::path::Path::new(&plan.settings().output_dir))

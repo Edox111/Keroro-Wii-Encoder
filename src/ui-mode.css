@@ -24,6 +24,10 @@ body[data-ui-mode="advanced"] .drop-zone { padding: 7px; }
 body[data-ui-mode="advanced"] .drop-zone .field-hint { display: none; }
 body[data-ui-mode="advanced"] .input-step .input-group { display: grid; grid-template-columns: 150px minmax(0, 1fr); align-items: center; gap: 8px; }
 body[data-ui-mode="advanced"] .input-step label { margin: 0; }
+.preset-step { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; }
+.preset-step > .step-heading { grid-column: 1; grid-row: 1; margin: 0; }
+.preset-step > .wiimc-badge { grid-column: 2; grid-row: 1; align-self: center; justify-self: end; margin: 0; }
+.preset-step > .preset-row, .preset-step > .field-hint, .preset-step > .advanced-panel { grid-column: 1 / -1; }
 .preset-row { display: flex; align-items: center; gap: 9px; }
 .preset-row select { flex: 1; min-width: 0; padding: 9px; border-color: #666; background: #080808; color: #fff; }
 .preset-step > .field-hint { color: #ccc; margin-top: 5px; }
@@ -58,7 +62,7 @@ body[data-ui-mode="simple"] #fileProgress { display: none; }
 .info-tip { position: relative; display: inline-flex; justify-content: center; align-items: center; flex: 0 0 15px; width: 15px; height: 15px; margin-left: 2px; border: 1px solid #999; border-radius: 50%; color: #eee; font: 600 10px/1 'Segoe UI', sans-serif; cursor: help; vertical-align: middle; }
 .info-tip:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-@media (max-height: 740px) {
+@media (max-height: 850px) {
   header { gap: 2px 8px; margin-bottom: 6px; }
   .header-heading h1 { font-size: 1.2rem; }
   .mode-switch button { padding: 6px 8px; }
@@ -70,6 +74,7 @@ body[data-ui-mode="simple"] #fileProgress { display: none; }
   .drop-zone { padding: 7px; margin-bottom: 5px; }
   .drop-zone .field-hint { display: none; }
   .preset-row select { padding: 6px; font-size: 0.8rem; }
+  .preset-step { row-gap: 3px; }
   .preset-step > .field-hint { font-size: 0.68rem; line-height: 1.25; margin-top: 3px; }
   .advanced-panel { margin-top: 5px; padding-top: 5px; }
   .advanced-content { margin-top: 5px; }
@@ -83,7 +88,7 @@ body[data-ui-mode="simple"] #fileProgress { display: none; }
 .advanced-content .settings-grid { align-items: start; gap: 10px 12px; }
 .advanced-content .settings-grid > .input-group { display: flex; flex-direction: column; align-items: stretch; gap: 5px; margin: 0; min-width: 0; }
 .advanced-content .settings-grid > .input-group label { white-space: normal; margin: 0; }
-.advanced-content .settings-grid select { display: block; width: 100%; min-width: 0; height: 36px; padding: 7px 6px; font-size: 0.76rem; line-height: normal; color-scheme: dark; }
+.advanced-content .settings-grid select { display: block; width: 100%; min-width: 0; height: var(--control-height); padding: 7px 6px; font-size: 0.76rem; line-height: normal; color-scheme: dark; }
 .quality-setting { grid-column: 1; grid-row: 1; }
 .cpu-setting { grid-column: 2; grid-row: 1; }
 .aspect-setting { grid-column: 1; grid-row: 2; }

@@ -7,23 +7,25 @@ use crate::{
 use keroro_encoder_core::{Cancellation, Progress, Settings, TaskKind};
 use std::sync::Arc;
 use tauri::{AppHandle, Manager, State, WebviewWindow};
+use tokio::io::AsyncReadExt;
 
 #[tauri::command]
 pub(super) async fn probe_media_streams(
     app: AppHandle,
     path: String,
-) -> Result<Vec<keroro_encoder_core::audio::AudioStream>, String> {
+) -> Result<keroro_encoder_core::probe::MediaInfo, String> {
     static PROBES: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(2);
     let _permit = PROBES.acquire().await.map_err(|e| e.to_string())?;
     let tools = resolve_tools(&app).await?;
     // Metadata probes own separate tracked children; they never replace FFmpeg's slot.
     let processes = Arc::new(ActiveProcess::default());
-    keroro_encoder_core::audio::probe_streams(
+    keroro_encoder_core::probe::media_streams(
         &tools,
         std::path::Path::new(&path),
         &Cancellation::new(),
         &processes,
-    ).await
+    )
+    .await
 }
 
 pub(super) fn change_pause(
@@ -207,15 +209,16 @@ pub(super) async fn read_preview(
         .filter(|file| file.job_id == job_id)
         .ok_or("This preview is no longer available.")?;
     const LIMIT: u64 = 32 * 1024 * 1024;
-    if tokio::fs::metadata(&file.path)
+    let reader = tokio::fs::File::open(&file.path)
         .await
-        .map_err(|e| e.to_string())?
-        .len()
-        > LIMIT
-    {
+        .map_err(|e| e.to_string())?;
+    if reader.metadata().await.map_err(|e| e.to_string())?.len() > LIMIT {
         return Err("The preview exceeds the 32 MiB playback limit.".into());
     }
-    let bytes = tokio::fs::read(&file.path)
+    let mut bytes = Vec::new();
+    reader
+        .take(LIMIT + 1)
+        .read_to_end(&mut bytes)
         .await
         .map_err(|e| e.to_string())?;
     if bytes.len() as u64 > LIMIT {
@@ -274,4 +277,28 @@ pub(super) async fn set_close_preferences(
         .map_err(|e| e.to_string())?
         .minimize_on_close = minimize_on_close;
     Ok(())
+}
+
+#[tauri::command]
+pub(super) async fn get_available_encoders(app: AppHandle) -> Result<Vec<String>, String> {
+    crate::gpu_probe::detect_gpu_encoders(&app).await
+}
+#[tauri::command]
+pub(super) async fn get_connected_drives()
+-> Result<Vec<keroro_encoder_core::storage::DriveInfo>, String> {
+    crate::drive_target::connected().await
+}
+#[tauri::command]
+pub(super) async fn inspect_output_target(
+    path: String,
+) -> Result<keroro_encoder_core::storage::DriveInfo, String> {
+    crate::drive_target::inspect(path).await
+}
+#[tauri::command]
+pub(super) async fn prepare_wii_drive(
+    drive_id: String,
+    manager: State<'_, BatchManager>,
+) -> Result<String, String> {
+    let _reservation = manager.reserve("drive-target".into(), Cancellation::new())?;
+    crate::drive_target::prepare(drive_id).await
 }

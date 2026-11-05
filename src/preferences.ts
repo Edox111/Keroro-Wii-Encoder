@@ -1,3 +1,4 @@
+import { isHardwareEncoder, hardwarePreference, type HardwareEncoder } from "./hardware";
 import { defaultVideo, normalizeVideoSettings, type VideoSettings } from "./video";
 import { normalizeLanguage } from "./audio";
 export const themes = ["keroro", "tamama", "giroro", "kururu", "dororo"] as const;
@@ -6,8 +7,15 @@ export function isTheme(value: unknown): value is Theme {
   return typeof value === "string" && themes.some((theme) => theme === value);
 }
 export interface Preferences {
+  hardwareEncoder: HardwareEncoder;
+  autoRouteWiiDrive: boolean;
+  selectedDriveId: string;
+  routedOutputPath: string;
   preferredAudioLang: string;
   preferredSubLang: string;
+  defaultOutputDir: string;
+  playSoundOnComplete: boolean;
+  openFolderOnComplete: boolean;
   uiMode: "simple" | "advanced";
   simplePreset: "classic" | "widescreen" | "fastest";
   showLogs: boolean;
@@ -25,7 +33,8 @@ export interface Preferences {
 }
 const key = "keroro.preferences.v1";
 const defaults: Preferences = {
-  preferredAudioLang: "eng", preferredSubLang: "eng",
+  hardwareEncoder: "auto", autoRouteWiiDrive: false, selectedDriveId: "", routedOutputPath: "",
+  preferredAudioLang: "jpn", preferredSubLang: "eng", defaultOutputDir: "", playSoundOnComplete: true, openFolderOnComplete: true,
   uiMode: "simple", simplePreset: "classic", showLogs: false,
   video: { ...defaultVideo },
   selectedTheme: "keroro", isMuted: false, minimizeToTrayOnClose: true, defaultCrf: 23, cpuMode: "maximum", subtitleFolderOverridden: false,
@@ -41,18 +50,24 @@ function load(): Preferences {
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) return result;
     const value = raw as Record<string, unknown>;
     for (const field of ["preferredAudioLang", "preferredSubLang"] as const) {
-      if (typeof value[field] === "string" && value[field].length <= 16 && /^[a-z]{2,3}(?:[-_][a-z]{2})?$/i.test(value[field].trim())) result[field] = normalizeLanguage(value[field]);
+      if (typeof value[field] === "string" && value[field].length <= 16 && (/^[a-z]{2,3}(?:[-_][a-z]{2})?$/i.test(value[field].trim()) || field === "preferredSubLang" && value[field] === "none")) result[field] = value[field] === "any" && field === "preferredAudioLang" || value[field] === "none" && field === "preferredSubLang" ? value[field] : normalizeLanguage(value[field]);
     }
+    for (const field of ["playSoundOnComplete", "openFolderOnComplete"] as const) {
+      if (typeof value[field] === "boolean") result[field] = value[field];
+    }
+    if (isHardwareEncoder(value.hardwareEncoder)) result.hardwareEncoder = value.hardwareEncoder;
+    if (typeof value.autoRouteWiiDrive === "boolean") result.autoRouteWiiDrive = value.autoRouteWiiDrive;
     if (value.uiMode === "simple" || value.uiMode === "advanced") result.uiMode = value.uiMode;
     if (value.simplePreset === "classic" || value.simplePreset === "widescreen" || value.simplePreset === "fastest") result.simplePreset = value.simplePreset;
     if (typeof value.showLogs === "boolean") result.showLogs = value.showLogs;
     result.video = normalizeVideoSettings(value.video) ?? result.video;
+    if (!isHardwareEncoder(value.hardwareEncoder)) result.hardwareEncoder = hardwarePreference(result.video.encoderOverride);
     if (isTheme(value.selectedTheme)) result.selectedTheme = value.selectedTheme;
     if (value.cpuMode === "balanced" || value.cpuMode === "maximum") result.cpuMode = value.cpuMode;
     if (typeof value.isMuted === "boolean") result.isMuted = value.isMuted;
     if (typeof value.minimizeToTrayOnClose === "boolean") result.minimizeToTrayOnClose = value.minimizeToTrayOnClose;
     if (value.defaultCrf === 20 || value.defaultCrf === 23 || value.defaultCrf === 26) result.defaultCrf = value.defaultCrf;
-    for (const field of ["lastInputFolder", "lastOutputFolder", "lastSubtitleFolder", "animeTitle"] as const) {
+    for (const field of ["lastInputFolder", "lastOutputFolder", "lastSubtitleFolder", "animeTitle", "defaultOutputDir", "selectedDriveId", "routedOutputPath"] as const) {
       if (typeof value[field] === "string" && value[field].length <= 32768) result[field] = value[field];
     }
     // Older versions stored paths only. Preserve a distinct saved subtitle folder.

@@ -17,7 +17,7 @@ pub struct AudioStream {
     pub language: String,
     pub title: Option<String>,
 }
-fn text(value: &serde_json::Value, limit: usize) -> Option<String> {
+pub(crate) fn text(value: &serde_json::Value, limit: usize) -> Option<String> {
     let text: String = value
         .as_str()?
         .chars()
@@ -102,6 +102,14 @@ pub async fn probe_streams(
     cancel: &Cancellation,
     processes: &Arc<ActiveProcess>,
 ) -> Result<Vec<AudioStream>, String> {
+    parse_streams(&probe_document(tools, path, cancel, processes).await?)
+}
+pub(crate) async fn probe_document(
+    tools: &Tools,
+    path: &Path,
+    cancel: &Cancellation,
+    processes: &Arc<ActiveProcess>,
+) -> Result<serde_json::Value, String> {
     offline::local_path(path)?;
     let path = tokio::fs::canonicalize(path)
         .await
@@ -120,18 +128,14 @@ pub async fn probe_streams(
             "error",
             "-protocol_whitelist",
             "file,pipe",
-            "-select_streams",
-            "a",
             "-show_entries",
-            STREAM_ENTRIES,
+            &format!("format=duration:{STREAM_ENTRIES}"),
             "-of",
             "json",
         ])
         .arg(path);
     let output = hardware::probe(command, cancel, processes).await?;
-    parse_streams(
-        &serde_json::from_str(&output).map_err(|e| format!("Invalid audio probe JSON: {e}"))?,
-    )
+    serde_json::from_str(&output).map_err(|e| format!("Invalid media probe JSON: {e}"))
 }
 pub fn select_index(
     streams: Option<&[AudioStream]>,

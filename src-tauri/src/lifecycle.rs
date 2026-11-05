@@ -5,14 +5,13 @@ use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 
 pub(super) fn show_main(app: &AppHandle) {
-    if let Some(window) = app.get_webview_window("main") {
-        if let Err(error) = window
+    if let Some(window) = app.get_webview_window("main")
+        && let Err(error) = window
             .show()
             .and_then(|_| window.unminimize())
             .and_then(|_| window.set_focus())
-        {
-            log::error!("Cannot restore window: {error}");
-        }
+    {
+        log::error!("Cannot restore window: {error}");
     }
 }
 

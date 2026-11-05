@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "./ipc";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { showUpdateReady, type UpdateNotice } from "./update-toast";
@@ -21,7 +21,7 @@ export function startAutomaticUpdates(lifecycle: UpdateLifecycle): () => void {
     try {
       const key = plugins.updater.pubkey.trim();
       if (!key || key.startsWith("YOUR_")) return;
-      if (!await invoke<boolean>("updater_is_configured") || abort.signal.aborted) return;
+      if (!await invoke("updater_is_configured") || abort.signal.aborted) return;
       update = await check({ timeout: 10_000 });
       if (!update || abort.signal.aborted) return;
       await update.download(undefined, { timeout: 600_000 });
@@ -30,7 +30,7 @@ export function startAutomaticUpdates(lifecycle: UpdateLifecycle): () => void {
       while (!abort.signal.aborted) {
         if (!await notice.waitForRestart() || abort.signal.aborted) return;
         if (!lifecycle.canInstall()) continue;
-        reserved = await invoke<boolean>("prepare_update_install");
+        reserved = await invoke("prepare_update_install");
         if (reserved) break;
       }
       if (!reserved || abort.signal.aborted) return;

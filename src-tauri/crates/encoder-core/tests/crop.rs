@@ -67,7 +67,10 @@ async fn crop_prepass_and_cpu_pipeline_preserve_subtitles_and_finalize_outputs()
     let chain = geometry.filter_with_crop(Some(detected)).expect("filter");
     assert!(chain.starts_with("crop=640:352:0:64,scale="));
     let settings = Settings {
+        target_volume_id: None,
         selected_audio_index: None,
+        selected_subtitle_index: None,
+        preferred_sub_lang: None,
         preferred_audio_lang: None,
         input_dir: input.to_string_lossy().into_owned(),
         output_dir: output.to_string_lossy().into_owned(),

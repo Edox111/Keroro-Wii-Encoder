@@ -18,7 +18,7 @@ export function parseAudioStreams(value: unknown): AudioStream[] {
     && typeof stream.codecName === "string" && stream.codecName.length <= 64
     && Number.isSafeInteger(stream.channels) && stream.channels >= 0
     && typeof stream.language === "string" && stream.language.length <= 32
-    && (stream.title === null || typeof stream.title === "string" && stream.title.length <= 256)
+    && (stream.title === null || typeof stream.title === "string" && stream.title.length <= 512)
     && (stream.channelLayout == null || typeof stream.channelLayout === "string" && stream.channelLayout.length <= 64))) throw new Error("Invalid audio stream metadata.");
   return value;
 }

@@ -48,7 +48,7 @@ pub(crate) fn configure_with_audio(
         VideoEncoder::Cpu => {
             command.args([
                 "-preset",
-                "superfast",
+                "medium",
                 "-threads",
                 cpu_threads,
                 "-crf",
@@ -61,10 +61,19 @@ pub(crate) fn configure_with_audio(
             ]);
         }
         VideoEncoder::Amf => {
-            command.args(["-preset", "quality", "-rc", "vbr_peak", "-b:v", bitrate]);
+            command.args([
+                "-quality",
+                "quality",
+                "-rc",
+                "vbr_peak",
+                "-enforce_hrd",
+                "1",
+                "-b:v",
+                bitrate,
+            ]);
         }
         VideoEncoder::Qsv => {
-            command.args(["-preset", "fast", "-look_ahead", "0", "-b:v", bitrate]);
+            command.args(["-preset", "medium", "-look_ahead", "0", "-b:v", bitrate]);
         }
     }
     // QSV uses integer level_idc; 31 is equivalent to Level 3.1.

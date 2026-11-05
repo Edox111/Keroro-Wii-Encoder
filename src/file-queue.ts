@@ -1,6 +1,9 @@
-import { isTerminal, type BatchProgress } from "./batch";
+import { fat32Warning, type DriveInfo } from "./drive-selector";
+import { isTerminal, type BatchProgress, type EncodingProgress } from "./batch";
 import { isSubtitleFile, matchSubtitles } from "./subtitle-matching";
-import { chooseAudioIndex, parseAudioStreams, type AudioStream } from "./audio";
+import { chooseAudioIndex, type AudioStream } from "./audio";
+
+import { parseMediaInfo, chooseSubtitleIndex, type SubtitleStream } from "./media-streams";
 
 export const videoExtensions = ["mp4", "mkv", "avi", "mov", "wmv", "flv", "webm"];
 export const isQueueVideo = (path: string): boolean => /\.(mp4|mkv|avi|mov|wmv|flv|webm)$/i.test(path);
@@ -11,8 +14,11 @@ export function parentDirectory(path: string): string {
   const parent = path.slice(0, separator);
   return /^(?:\\\\\?\\)?[A-Za-z]:$/.test(parent) ? parent + path[separator] : parent || path[separator];
 }
-export type QueueStatus = "Pending" | "Encoding" | "Done" | "Error";
+export type QueueStatus = "Pending" | "Encoding" | "Paused" | "Done" | "Error";
 export interface QueueItem { id: string; path: string; status: QueueStatus; message: string; percent: number; jobId: string | null; subtitlePath?: string | null;
+  durationSeconds?: number | null; storageWarning?: string | null; errorLog?: string;
+  subtitleStreams?: readonly SubtitleStream[]; selectedSubtitleIndex?: number | null; subtitleManual?: boolean;
+  fps?: number | null; speed?: string | null; etaSeconds?: number | null; paused?: boolean;
   audioStreams?: readonly AudioStream[]; selectedAudioIndex?: number | null; audioManual?: boolean;
   audioProbeState?: "pending" | "loading" | "ready" | "error"; audioProbeError?: string;
 }
@@ -24,14 +30,18 @@ const key = "keroro.queue.v1";
 export class FileQueue {
   private items: QueueItem[] = [];
   private nextId = 0;
+  private outputVolume: DriveInfo | null = null;
   private subtitlePaths: string[] = [];
   private probeTask: Promise<void> | null = null;
   private probesDisposed = false;
   private abort: AbortController | null = null;
   private latest = new Map<string, BatchProgress>();
+  private encodingSequence = -1;
   private active: QueueItem | null = null;
   private observers = new Set<(progress: BatchProgress) => void>();
   running = false;
+  private finishedNormally = false;
+  get completedNormally(): boolean { return this.finishedNormally; }
   constructor(private changed: (snapshot: QueueSnapshot) => void,
     private storage?: Pick<Storage, "getItem" | "setItem" | "removeItem">) {
     try {
@@ -51,6 +61,8 @@ export class FileQueue {
           message: value.status === "Encoding" ? "Interrupted. Existing output will be verified when restarted."
             : typeof value.message === "string" ? value.message.slice(0, 2048) : "",
           percent: status === "Done" || status === "Error" ? 100 : 0, jobId: null,
+          ...(value.selectedSubtitleIndex === null || Number.isSafeInteger(value.selectedSubtitleIndex) && value.selectedSubtitleIndex >= 0 && value.selectedSubtitleIndex < 256
+            ? { selectedSubtitleIndex: value.selectedSubtitleIndex, subtitleManual: value.subtitleManual === true } : {}),
           ...(Number.isSafeInteger(value.selectedAudioIndex) && value.selectedAudioIndex >= 0 && value.selectedAudioIndex < 256
             ? { selectedAudioIndex: value.selectedAudioIndex, audioManual: value.audioManual === true } : {}),
           ...(value.subtitlePath === null || (typeof value.subtitlePath === "string" && isSubtitleFile(value.subtitlePath) && value.subtitlePath.length <= 32768)
@@ -65,7 +77,7 @@ export class FileQueue {
   snapshot(): QueueSnapshot {
     const settled = this.items.filter(item => item.status === "Done" || item.status === "Error").length;
     const current = this.active ? this.items.indexOf(this.active) + 1 : 0;
-    return { items: this.items.map(item => ({ ...item })), running: this.running, probing: this.hasPendingAudioProbes,
+    return { items: this.items.map(item => ({ ...item, storageWarning: fat32Warning(this.outputVolume, item.durationSeconds) })), running: this.running, probing: this.hasPendingAudioProbes,
       percent: this.items.length ? (settled + (this.active?.percent ?? 0) / 100) / this.items.length * 100 : 0,
       label: this.running ? `Processing ${current || Math.min(settled + 1, this.items.length)} of ${this.items.length}`
         : `${settled} of ${this.items.length} complete`,
@@ -74,13 +86,13 @@ export class FileQueue {
   private emit(persist = true): void {
     if (persist) try {
       if (this.items.length || this.subtitlePaths.length) this.storage?.setItem(key, JSON.stringify({
-        items: this.items.map(({ path, status, message, subtitlePath, selectedAudioIndex, audioManual }) => ({ path, status, message, subtitlePath, selectedAudioIndex, audioManual })), subtitlePaths: this.subtitlePaths,
+        items: this.items.map(({ path, status, message, subtitlePath, selectedAudioIndex, audioManual, selectedSubtitleIndex, subtitleManual }) => ({ path, status, message, subtitlePath, selectedAudioIndex, audioManual, selectedSubtitleIndex, subtitleManual })), subtitlePaths: this.subtitlePaths,
       }));
       else this.storage?.removeItem(key);
     } catch { /* Quota/privacy errors leave the in-memory queue usable. */ }
     this.changed(this.snapshot());
   }
-  add(paths: string[], subtitles: string[] = []): void {
+  add(paths: string[], subtitles: string[] = [], preferredSub?: string): void {
     if (this.running) return;
     const normalized = (path: string) => path.replace(/\\/g, "/").toLocaleLowerCase("en-US");
     const existing = new Set(this.items.map(item => normalized(item.path)));
@@ -102,7 +114,7 @@ export class FileQueue {
       const pending = this.items.filter(item => item.status === "Pending");
       // Completed assignments cannot be reused by subsequently added videos.
       const reserved = new Set(this.items.filter(item => item.status !== "Pending").map(item => item.subtitlePath));
-      const pairs = matchSubtitles(pending.map(item => item.path), selectedSubtitles.filter(path => !reserved.has(path)));
+      const pairs = matchSubtitles(pending.map(item => item.path), selectedSubtitles.filter(path => !reserved.has(path)), preferredSub);
       pending.forEach((item, index) => { item.subtitlePath = pairs[index].subtitlePath; });
     }
     this.emit();
@@ -119,6 +131,28 @@ export class FileQueue {
       || !item.audioStreams?.some(stream => stream.index === index)) return;
     item.selectedAudioIndex = index; item.audioManual = true; item.audioProbeError = ""; this.emit();
   }
+  selectSubtitle(id: string, index: number | null): void {
+    const item = this.items.find(item => item.id === id);
+    if (this.running || !item || item.status !== "Pending" || item.audioProbeState !== "ready"
+      || index !== null && !item.subtitleStreams?.some(s => s.index === index && s.supported)) return;
+    item.selectedSubtitleIndex = index; item.subtitleManual = true; this.emit();
+  }
+  reselectAutomaticSubtitles(preferred: string): void {
+    if (this.running) return;
+    let changed = false;
+    if (this.subtitlePaths.length) {
+      const pending = this.items.filter(item => item.status === "Pending");
+      const reserved = new Set(this.items.filter(item => item.status !== "Pending").map(item => item.subtitlePath));
+      const pairs = matchSubtitles(pending.map(item => item.path), this.subtitlePaths.filter(path => !reserved.has(path)), preferred);
+      pending.forEach((item, index) => { if (item.subtitlePath !== pairs[index].subtitlePath) { item.subtitlePath = pairs[index].subtitlePath; changed = true; } });
+    }
+    for (const item of this.items) {
+      if (item.status !== "Pending" || item.subtitleManual || item.audioProbeState !== "ready") continue;
+      const selected = chooseSubtitleIndex(item.subtitleStreams ?? [], preferred, !!item.subtitlePath);
+      if (selected !== item.selectedSubtitleIndex) { item.selectedSubtitleIndex = selected; changed = true; }
+    }
+    if (changed) this.emit();
+  }
   reselectAutomaticAudio(preferred: string): void {
     if (this.running) return;
     let changed = false;
@@ -129,7 +163,7 @@ export class FileQueue {
     }
     if (changed) this.emit();
   }
-  probePendingAudio(probe: (path: string) => Promise<unknown>, preferred: () => string): Promise<void> {
+  probePendingAudio(probe: (path: string) => Promise<unknown>, preferred: () => string, preferredSub: () => string = () => "none"): Promise<void> {
     if (this.running || this.probesDisposed) return Promise.resolve();
     this.items.filter(item => item.status === "Pending" && item.audioProbeState === undefined)
       .forEach(item => { item.audioProbeState = "pending"; });
@@ -142,9 +176,16 @@ export class FileQueue {
         if (!item) return;
         item.audioProbeState = "loading"; this.emit(false);
         try {
-          const streams = parseAudioStreams(await probe(item.path));
+          const media = parseMediaInfo(await probe(item.path));
+          const streams = media.audioStreams;
           if (this.probesDisposed || !this.items.includes(item)) continue;
           item.audioStreams = streams;
+          item.durationSeconds = media.durationSeconds;
+          item.subtitleStreams = media.subtitleStreams;
+          if (!item.subtitleManual || item.selectedSubtitleIndex != null && !media.subtitleStreams.some(s => s.index === item.selectedSubtitleIndex && s.supported)) {
+            item.selectedSubtitleIndex = chooseSubtitleIndex(media.subtitleStreams, preferredSub(), !!item.subtitlePath);
+            item.subtitleManual = false;
+          }
           if (!item.audioManual || !streams.some(stream => stream.index === item.selectedAudioIndex)) {
             if (item.audioManual) item.audioProbeError = "Previous audio choice is unavailable. Review the current selection.";
             item.selectedAudioIndex = chooseAudioIndex(streams, preferred()); item.audioManual = false;
@@ -153,6 +194,7 @@ export class FileQueue {
         } catch (error) {
           if (this.probesDisposed || !this.items.includes(item)) continue;
           if (!item.audioManual) item.selectedAudioIndex = null;
+          if (!item.subtitleManual) item.selectedSubtitleIndex = null;
           item.audioProbeState = "error"; item.audioProbeError = String(error).slice(0, 512);
         }
         this.emit();
@@ -160,6 +202,14 @@ export class FileQueue {
     };
     this.probeTask = Promise.all([worker(), worker()]).then(() => {}).finally(() => { this.probeTask = null; this.emit(false); });
     return this.probeTask;
+  }
+  setOutputVolume(volume: DriveInfo | null): void { this.outputVolume = volume; this.emit(false); }
+  retry(id: string): void {
+    if (this.running) return;
+    const item = this.items.find(item => item.id === id && item.status === "Error");
+    if (!item) return;
+    item.status = "Pending"; item.message = ""; item.errorLog = ""; item.percent = 0; item.jobId = null; item.paused = false;
+    item.audioProbeState = "pending"; this.finishedNormally = false; this.emit();
   }
   stopProbing(): void { this.probesDisposed = true; }
   remove(id: string): void { this.items = this.items.filter(item => item.id !== id || item.status !== "Pending"); this.emit(); }
@@ -170,14 +220,32 @@ export class FileQueue {
     if (previous && previous.sequence >= progress.sequence) return;
     this.latest.set(progress.jobId, progress);
     if (this.latest.size > 8) this.latest.delete(this.latest.keys().next().value as string);
-    if (this.active?.jobId === progress.jobId) {
+    if (this.active?.jobId === progress.jobId && progress.sequence >= this.encodingSequence) {
+      if (!isTerminal(progress.phase)) this.active.status = progress.paused ? "Paused" : "Encoding";
+      this.active.fps = progress.fps; this.active.speed = progress.speed;
+      this.active.etaSeconds = progress.etaSeconds; this.active.paused = progress.paused;
       if (Number.isFinite(progress.batchPercent)) this.active.percent = Math.min(100, Math.max(0, progress.batchPercent));
       this.emit(false);
     }
     this.observers.forEach(observer => observer(progress));
   }
+  observeEncoding(progress: EncodingProgress): void {
+    if (!this.active || !Number.isSafeInteger(progress.sequence) || progress.sequence < 0
+      || progress.jobId !== this.active.jobId || progress.sequence <= this.encodingSequence
+      || progress.sequence < (this.latest.get(progress.jobId)?.sequence ?? -1)) return;
+    this.encodingSequence = progress.sequence;
+    const previous = [this.active.fps, this.active.speed, this.active.etaSeconds, this.active.paused, this.active.percent];
+    if (progress.fps !== undefined) this.active.fps = progress.fps;
+    if (progress.speed !== undefined) this.active.speed = progress.speed == null ? null : `${progress.speed}x`;
+    if (progress.etaSeconds !== undefined) this.active.etaSeconds = progress.etaSeconds;
+    this.active.paused = progress.paused;
+    if (!isTerminal(progress.phase)) this.active.status = progress.paused ? "Paused" : "Encoding";
+    if (typeof progress.progressPercent === "number" && Number.isFinite(progress.progressPercent)) this.active.percent = Math.min(100, Math.max(0, progress.progressPercent));
+    const next = [this.active.fps, this.active.speed, this.active.etaSeconds, this.active.paused, this.active.percent];
+    if (next.some((value, index) => value !== previous[index])) this.emit(false);
+  }
   waitForJob(jobId: string, read: () => Promise<BatchProgress | null>, signal: AbortSignal): Promise<BatchProgress> {
-    if (this.active) { this.active.jobId = jobId; this.emit(); }
+    if (this.active) { this.active.jobId = jobId; this.encodingSequence = -1; this.emit(); }
     return new Promise((resolve, reject) => {
       let polling = false, failures = 0, finished = false;
       const cleanup = () => { finished = true; clearInterval(timer); this.observers.delete(onProgress); signal.removeEventListener("abort", onAbort); };
@@ -206,7 +274,8 @@ export class FileQueue {
   async run(submit: (item: Readonly<QueueItem>, signal: AbortSignal) => Promise<BatchProgress>,
     outputName: (path: string) => string): Promise<void> {
     if (this.running || this.hasPendingAudioProbes || !this.hasPending) return;
-    this.running = true;
+    this.running = true; this.finishedNormally = false;
+    let interrupted = false;
     this.abort = new AbortController();
     const signal = this.abort.signal;
     const used = new Set<string>();
@@ -235,8 +304,10 @@ export class FileQueue {
           if (!progress || signal.aborted) throw new QueueSafetyError("Queue stopped.");
           if (!isTerminal(progress.phase)) throw new QueueSafetyError("The native job has not finished. Queue stopped without launching another encoder.");
           item.status = progress.phase === "succeeded" ? "Done" : "Error";
+          const details = progress.errors.map(entry => entry.reason).join("\n");
+          item.errorLog = progress.phase === "succeeded" ? "" : (details || progress.message).slice(0, 220_000);
           item.message = progress.phase === "succeeded" ? progress.skipped ? "Existing output verified or preserved by the backend." : "Encoded successfully."
-            : (progress.errors.map(entry => entry.reason).join("\n") || progress.message).slice(0, 2048);
+            : (details || progress.message).split("\n\nFFmpeg stderr:")[0].slice(0, 2048);
           if (progress.phase === "cancelled" || /recovery state could not be saved|worker stopped unexpectedly/i.test(progress.message)) {
             throw new QueueSafetyError(item.message);
           }
@@ -244,13 +315,14 @@ export class FileQueue {
             throw new QueueSafetyError("The completed output was preserved, but native recovery state needs attention. Queue stopped before submitting another file.");
           }
         } catch (error) {
-          item.status = signal.aborted ? "Pending" : "Error"; item.message = String(error).slice(0, 2048);
-          if (error instanceof QueueSafetyError) break;
+          item.status = signal.aborted ? "Pending" : "Error"; item.message = String(error).slice(0, 2048); item.errorLog = String(error).slice(0, 220_000);
+          if (error instanceof QueueSafetyError) { interrupted = true; break; }
         } finally {
           item.percent = item.status === "Pending" ? 0 : 100; this.active = null; this.emit();
         }
       }
     } finally {
+      this.finishedNormally = !interrupted && !signal.aborted && !this.hasPending;
       this.running = false; this.abort = null; this.emit();
     }
   }

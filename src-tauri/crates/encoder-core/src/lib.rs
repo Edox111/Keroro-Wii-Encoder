@@ -2,25 +2,31 @@
 mod benchmark;
 use serde::{Deserialize, Serialize};
 pub mod artifacts;
-pub mod audio;
 pub mod atomic_file;
+pub mod audio;
 mod cancel;
 pub mod crop;
 mod diagnostics;
 pub mod drop_scan;
+mod engine;
 pub mod environment;
+pub mod ffmpeg;
 pub mod hardware;
 mod job_fence;
 pub mod local_log;
 pub mod offline;
 mod output;
+mod pipe_lines;
 pub mod power;
 pub mod preflight;
+pub mod probe;
 mod process_state;
 mod profile;
 pub mod progress;
 mod records;
 pub mod session;
+pub mod snapshot;
+pub mod storage;
 pub mod subtitles;
 mod validation;
 pub mod video;
@@ -37,11 +43,7 @@ use std::{
     sync::Arc,
     time::Instant,
 };
-use tokio::{
-    fs,
-    io::{AsyncBufReadExt, BufReader},
-    process::Command,
-};
+use tokio::{fs, process::Command};
 
 /// Container candidates; FFmpeg validates the actual streams and installed decoders.
 pub const VIDEO_EXTENSIONS: &[&str] = &["mp4", "mkv", "avi", "mov", "wmv", "flv", "webm"];
@@ -75,6 +77,8 @@ impl CpuMode {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target_volume_id: Option<String>,
     pub input_dir: String,
     pub output_dir: String,
     pub crf: u8,
@@ -88,6 +92,10 @@ pub struct Settings {
     pub anime_title: String,
     #[serde(default)]
     pub selected_audio_index: Option<u32>,
+    #[serde(default)]
+    pub selected_subtitle_index: Option<u32>,
+    #[serde(default)]
+    pub preferred_sub_lang: Option<String>,
     #[serde(default)]
     pub preferred_audio_lang: Option<String>,
 }
@@ -171,6 +179,7 @@ pub struct Progress {
     pub failed: usize,
     pub elapsed_seconds: f64,
     pub fps: Option<f64>,
+    pub frame: Option<u64>,
     pub speed: Option<String>,
     pub eta_seconds: Option<f64>,
     pub message: String,
@@ -179,7 +188,13 @@ pub struct Progress {
 }
 
 enum ItemUpdate {
-    Progress(Option<f64>, Option<f64>, Option<String>, Option<f64>),
+    Progress(
+        Option<f64>,
+        Option<f64>,
+        Option<String>,
+        Option<f64>,
+        Option<u64>,
+    ),
     Warning(String),
     SubtitlesOff,
     Measurements(EncodingMeasurements),
@@ -199,6 +214,7 @@ impl BatchPlan {
         directory: &Path,
     ) -> Result<Self, String> {
         settings.output_dir = directory.to_string_lossy().into_owned();
+        settings.target_volume_id = None;
         Self::prepare_inner(job_id, settings, TaskKind::Preview).await
     }
 
@@ -208,7 +224,23 @@ impl BatchPlan {
         kind: TaskKind,
     ) -> Result<Self, String> {
         settings.video.validate()?;
-        if settings.selected_audio_index.is_some_and(|index| index >= audio::MAX_AUDIO_STREAMS)
+        if settings
+            .selected_subtitle_index
+            .is_some_and(|index| index >= 256)
+        {
+            return Err("Invalid embedded subtitle index.".into());
+        }
+        if settings.preferred_sub_lang.as_ref().is_some_and(|v| {
+            v.len() > 16 || (v != "none" && audio::normalize_language(v) == "und" && v != "und")
+        }) {
+            return Err("Invalid subtitle language preference.".into());
+        }
+        if settings.selected_subtitle_index.is_some() {
+            settings.subtitle_dir = None;
+        }
+        if settings
+            .selected_audio_index
+            .is_some_and(|index| index >= audio::MAX_AUDIO_STREAMS)
             || settings.preferred_audio_lang.as_ref().is_some_and(|value| {
                 value.len() > 16 || (audio::normalize_language(value) == "und" && value != "und")
             })
@@ -217,10 +249,10 @@ impl BatchPlan {
         }
         offline::local_path(Path::new(&settings.input_dir))?;
         offline::local_path(Path::new(&settings.output_dir))?;
-        if let Some(path) = &settings.subtitle_dir {
-            if !path.trim().is_empty() {
-                offline::local_path(Path::new(path))?;
-            }
+        if let Some(path) = &settings.subtitle_dir
+            && !path.trim().is_empty()
+        {
+            offline::local_path(Path::new(path))?;
         }
         if job_id.is_empty()
             || job_id.len() > 128
@@ -342,6 +374,13 @@ impl BatchPlan {
         if settings.output_dir.trim().is_empty() {
             return Err("Choose an output folder.".into());
         }
+        let destination = PathBuf::from(&settings.output_dir);
+        let expected_volume = settings.target_volume_id.clone();
+        let volume = session::blocking(move || {
+            storage::verify_target(&destination, expected_volume.as_deref())
+        })
+        .await?;
+        settings.target_volume_id = Some(volume.id);
         fs::create_dir_all(&settings.output_dir)
             .await
             .map_err(|e| preflight::access_error("Cannot create output folder", e))?;
@@ -443,6 +482,7 @@ impl BatchPlan {
             failed: 0,
             elapsed_seconds: 0.0,
             fps: None,
+            frame: None,
             speed: None,
             eta_seconds: None,
             message: format!("Queued {} video(s).", self.items.len()),
@@ -460,51 +500,6 @@ fn process(path: &Path) -> Command {
     command
 }
 
-#[derive(Default)]
-struct SourceInfo {
-    duration: Option<f64>,
-    has_audio: Option<bool>,
-    audio_streams: Option<Vec<audio::AudioStream>>,
-}
-async fn source_info(
-    tools: &Tools,
-    input: &Path,
-    cancellation: &Cancellation,
-    processes: &Arc<ActiveProcess>,
-) -> SourceInfo {
-    let mut command = process(&tools.ffprobe);
-    command
-        .args([
-            "-v",
-            "error",
-            "-protocol_whitelist",
-            "file,pipe",
-            "-show_entries",
-            "format=duration:stream=index,codec_type,codec_name,channels,channel_layout:stream_tags=language,title",
-            "-of",
-            "json",
-        ])
-        .arg(input);
-    let text = match hardware::probe(command, cancellation, processes).await {
-        Ok(text) => text,
-        Err(_) => return SourceInfo::default(),
-    };
-    let document: serde_json::Value = match serde_json::from_str(&text) {
-        Ok(value) => value,
-        Err(_) => return SourceInfo::default(),
-    };
-    SourceInfo {
-        audio_streams: audio::parse_streams(&document).ok(),
-        duration: document["format"]["duration"]
-            .as_str()
-            .and_then(|s| s.parse::<f64>().ok())
-            .filter(|v| v.is_finite() && *v > 0.0),
-        has_audio: document["streams"]
-            .as_array()
-            .map(|streams| streams.iter().any(|s| s["codec_type"] == "audio")),
-    }
-}
-
 pub fn file_percent(out_time_us: &str, duration: Option<f64>) -> Option<f64> {
     file_percent_seconds(out_time_us.parse::<f64>().ok()? / 1_000_000.0, duration)
 }
@@ -516,374 +511,6 @@ pub fn file_percent_seconds(seconds: f64, duration: Option<f64>) -> Option<f64> 
     }
     // 100% is reserved for a successful exit and finalized output.
     Some((seconds / duration * 100.0).clamp(0.0, 99.9))
-}
-
-async fn finalize_output(
-    temp: &Path,
-    output: &Path,
-    cancellation: &Cancellation,
-    checkpoint: Option<(&Arc<session::SessionStore>, usize)>,
-) -> Result<Option<String>, String> {
-    if cancellation.is_cancelled() {
-        return Err("Encoding cancelled.".into());
-    }
-    let source = temp.to_path_buf();
-    let destination = output.to_path_buf();
-    if let Some((store, index)) = checkpoint {
-        let store = store.clone();
-        let stop = cancellation.clone();
-        let result = session::blocking(move || {
-            store.commit_checked(index, &source, &destination, &|| stop.is_cancelled())
-        })
-        .await;
-        if result.is_err() && cancellation.is_cancelled() {
-            return Err("Encoding cancelled.".into());
-        }
-        result.map_err(|error| {
-            format!("STATE_PERSISTENCE_FAILED: {error}. Any completed output was preserved.")
-        })?;
-    } else {
-        session::blocking(move || {
-            let file = std::fs::OpenOptions::new()
-                .read(true)
-                .write(true)
-                .open(&source)
-                .map_err(|e| e.to_string())?;
-            file.sync_all().map_err(|e| e.to_string())?;
-            drop(file);
-            atomic_file::rename(&source, &destination, false)
-        })
-        .await?;
-    }
-    Ok(None)
-}
-
-async fn encode_item(
-    tools: &Tools,
-    settings: &Settings,
-    item: &Item,
-    kind: TaskKind,
-    encoder: hardware::VideoEncoder,
-    cancellation: &Cancellation,
-    processes: &Arc<ActiveProcess>,
-    checkpoint: Option<(&Arc<session::SessionStore>, usize)>,
-    mut update: impl FnMut(ItemUpdate),
-) -> Result<Option<String>, String> {
-    if cancellation.is_cancelled() {
-        return Err("Encoding cancelled.".into());
-    }
-    if let Some(error) = &item.validation_error {
-        return Err(error.clone());
-    }
-    if fs::try_exists(&item.output)
-        .await
-        .map_err(|e| e.to_string())?
-    {
-        return Err("Output already exists; it was preserved. Choose another output folder or move the existing output.".into());
-    }
-    let parent = item.output.parent().ok_or("Invalid output directory.")?;
-    if let Some(warning) = preflight::space(parent).await? {
-        update(ItemUpdate::Warning(warning));
-    }
-    let temp = output::partial_path(&item.output)?;
-    let mut staged: Option<subtitles::StagedSubtitle> = None;
-    let reserved = fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&temp)
-        .await
-        .map_err(|e| format!("Cannot reserve temporary output: {e}"))?;
-    drop(reserved);
-    if let Err(error) = artifacts::record(&temp).await {
-        let _ = fs::remove_file(&temp).await;
-        return Err(format!("Cannot journal temporary output: {error}"));
-    }
-    let result = async {
-        let observed_item = item.clone(); let observed_settings = settings.clone();
-        let request = session::blocking(move || records::Request::capture(&observed_item, &observed_settings)).await?;
-        let encode_started = Instant::now();
-        let source = source_info(tools, &item.input, cancellation, processes).await;
-        let duration = source.duration;
-        processes.wait_until_idle().await;
-        if cancellation.is_cancelled() {
-            return Err("Encoding cancelled.".into());
-        }
-        let duration = if kind == TaskKind::Preview {
-            duration.map(|d| d.min(10.0))
-        } else {
-            duration
-        };
-        if let Some(warning)=validation::projected_fat32_warning(duration) { update(ItemUpdate::Warning(warning)); }
-        let crop = if settings.video.auto_crop {
-            match crop::detect(tools, &item.input, source.duration, cancellation, processes).await {
-                Ok(crop) => {
-                    log::info!("Auto-crop for {}: {:?}", item.input.display(), crop);
-                    crop
-                }
-                Err(error) => {
-                    if cancellation.is_cancelled() { return Err("Encoding cancelled.".into()); }
-                    log::warn!("Crop detection unavailable; retaining original frame: {error}");
-                    None
-                }
-            }
-        } else { None };
-        let mut filter = settings.video.filter_with_crop(crop)?;
-        if let Some(source) = &item.subtitle {
-            match subtitles::read_scoped(source, item.subtitle_root.as_deref()).await {
-                Ok(decoded) => {
-                    if cancellation.is_cancelled() {
-                        return Err("Encoding cancelled.".into());
-                    }
-                    if let Some(warning) = decoded.warning {
-                        update(ItemUpdate::Warning(warning));
-                    }
-                    let ext = subtitles::extension(source).ok_or("Invalid subtitle extension.")?;
-                    let owned = subtitles::stage(decoded.text, ext).await?;
-                    filter.push_str(",subtitles=filename=");
-                    filter.push_str(owned.filename()?);
-                    filter.push_str(":charenc=UTF-8");
-                    staged = Some(owned);
-                }
-                Err(subtitles::ReadError::Syntax(reason)) => {
-                    return Err(format!("Subtitle syntax error: {reason}"));
-                }
-                Err(error) => {
-                    update(ItemUpdate::Warning(format!(
-                        "{error} Encoding without external subtitles."
-                    )));
-                    update(ItemUpdate::SubtitlesOff);
-                }
-            }
-        }
-        let has_subtitles = staged.is_some();
-        if cancellation.is_cancelled() {
-            return Err("Encoding cancelled.".into());
-        }
-        let mut command = process(&tools.ffmpeg);
-        #[cfg(windows)]
-        if settings.cpu_mode == CpuMode::Balanced { command.creation_flags(0x0800_0000 | 0x0000_4000); }
-
-        let threads = settings.cpu_mode.threads(num_cpus::get()).to_string();
-        command.args(["-threads", &threads, "-filter_threads", &threads]);
-        command
-            .current_dir(
-                staged
-                    .as_ref()
-                    .map_or(parent, |subtitle| subtitle.directory()),
-            )
-            .args([
-                "-hide_banner",
-                "-loglevel",
-                "repeat+level+info",
-                "-stdin",
-                "-y",
-                "-progress",
-                "pipe:1",
-                "-stats_period",
-                "0.25",
-                "-stats",
-                "-benchmark",
-            ]);
-        if kind == TaskKind::Preview {
-            command.args(["-ss", "00:00:00"]);
-        }
-        command
-            .args(["-protocol_whitelist", "file,pipe"])
-            .arg("-i")
-            .arg(&item.input);
-        if kind == TaskKind::Preview {
-            command.args(["-t", "10"]);
-        }
-        let selected_audio = audio::select_index(
-            source.audio_streams.as_deref(),
-            settings.selected_audio_index,
-            settings.preferred_audio_lang.as_deref(),
-        )?;
-        profile::configure_with_audio(
-            &mut command, &filter, encoder, settings.crf, &threads,
-            settings.video.max_fps()?, selected_audio,
-        );
-        let mut child = command
-            .arg(&temp)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .map_err(|e| format!("Cannot start FFmpeg: {e}"))?;
-        let stdout = child
-            .stdout
-            .take()
-            .ok_or("FFmpeg progress pipe is unavailable.")?;
-        let stderr = child
-            .stderr
-            .take()
-            .ok_or("FFmpeg diagnostic pipe is unavailable.")?;
-        let mut child = processes.track(child)?;
-        child.hold_subtitle(staged.take());
-        let (stderr_updates, stderr_metrics) =
-            tokio::sync::watch::channel(progress::StderrProgress::default());
-        let diagnostics = tokio::spawn(async move {
-            let mut telemetry = progress::StderrProgress::default();
-            diagnostics::monitor(stderr, move |line| {
-                if telemetry.update(line) {
-                    stderr_updates.send_replace(telemetry.clone());
-                }
-            })
-            .await
-        });
-        let mut lines = BufReader::new(stdout).lines();
-        let (mut position, mut fps, mut speed, mut read_error) = (None, None, None, None);
-        loop {
-            let next = tokio::select! {
-                _ = cancellation.cancelled() => break,
-                next = lines.next_line() => next,
-            };
-            let line = match next {
-                Ok(Some(line)) => line,
-                Ok(None) => break,
-                Err(error) => {
-                    read_error = Some(error);
-                    break;
-                }
-            };
-            let Some((key, value)) = line.split_once('=') else {
-                continue;
-            };
-            match key {
-                "out_time_us" => {
-                    position = value
-                        .parse::<f64>()
-                        .ok()
-                        .filter(|time| time.is_finite() && *time >= 0.0)
-                        .map(|time| time / 1_000_000.0)
-                }
-                "out_time" if position.is_none() => position = progress::timestamp_seconds(value),
-                "fps" => {
-                    fps = value
-                        .parse::<f64>()
-                        .ok()
-                        .filter(|f| f.is_finite() && *f >= 0.0)
-                }
-                "speed" => {
-                    speed = (value != "N/A").then(|| value.chars().take(24).collect::<String>())
-                }
-                "progress" => {
-                    let human = stderr_metrics.borrow().clone();
-                    let total = duration.or(human.duration).map(|duration| {
-                        if kind == TaskKind::Preview {
-                            duration.min(10.0)
-                        } else {
-                            duration
-                        }
-                    });
-                    let current = position.or(human.position);
-                    let current_speed = speed
-                        .clone()
-                        .or_else(|| human.speed.map(|speed| format!("{speed:.2}x")));
-                    let rate = current_speed.as_deref().and_then(progress::speed_factor);
-                    let percent = current.and_then(|current| file_percent_seconds(current, total));
-                    let eta = progress::eta_seconds(current, total, rate);
-                    update(ItemUpdate::Progress(percent, fps, current_speed, eta));
-                }
-                _ => {}
-            }
-        }
-        let stop_result = if cancellation.is_cancelled() || read_error.is_some() {
-            child.stop().await
-        } else {
-            Ok(())
-        };
-        let status = tokio::select! {
-            result = child.wait() => result.map_err(|e| format!("Cannot wait for FFmpeg: {e}")),
-            _ = cancellation.cancelled(), if !cancellation.is_cancelled() => {
-                child.stop().await?;
-                child.wait().await.map_err(|e| e.to_string())
-            },
-        };
-        let diagnostic = diagnostics
-            .await
-            .map_err(|e| format!("Cannot join FFmpeg diagnostics: {e}"))??;
-        stop_result?;
-        if cancellation.is_cancelled() {
-            return Err("Encoding cancelled.".into());
-        }
-        if let Some(error) = read_error {
-            return Err(format!("Cannot read FFmpeg progress: {error}"));
-        }
-        if !status?.success() {
-            log::error!(
-                "FFmpeg failure for {}. Last stderr lines:\n{}",
-                item.input.display(),
-                diagnostic
-            );
-            let category = if has_subtitles {
-                "FFmpeg subtitle/filter or media parse failure"
-            } else {
-                "FFmpeg failed"
-            };
-            return Err(format!(
-                "{category}. See keroro-encoder.log for decoder/parser diagnostics."
-            ));
-        }
-        // Release the exited encoder (and its subtitle staging) before tracking ffprobe.
-        drop(child);
-        processes.wait_until_idle().await;
-        let validated = validation::validate(tools, &temp, duration, source.has_audio, cancellation, processes, &settings.video).await.map_err(|error|format!("OUTPUT_VALIDATION_FAILED: {error}"))?;
-        let verify_request=request.clone(); let verify_item=item.clone(); let verify_settings=settings.clone();
-        session::blocking(move || verify_request.unchanged(&verify_item, &verify_settings)).await?;
-        let mut warnings = Vec::new();
-        if let Some(warning) = validation::fat32_warning(validated.bytes) { warnings.push(warning); }
-        finalize_output(&temp, &item.output, cancellation, checkpoint).await?;
-        let mut measurements=records::Measurements::from_stderr(&diagnostic);
-        measurements.encoder=encoder.name().into(); measurements.subtitle_applied=has_subtitles;
-        measurements.cpu_mode=match settings.cpu_mode {CpuMode::Balanced=>"balanced",CpuMode::Maximum=>"maximum"}.into();
-        measurements.cpu_threads=settings.cpu_mode.threads(num_cpus::get()); measurements.media_seconds=validated.duration;
-        measurements.wall_seconds=encode_started.elapsed().as_secs_f64(); measurements.final_fps=fps;
-        measurements.output_bytes=validated.bytes;
-        log::info!("Encoding measurements: {}", serde_json::to_string(&measurements).map_err(|e| e.to_string())?);
-        if let Some((store, _))=checkpoint {
-            let directory=store.records_directory(); let output=item.output.clone(); let persisted=measurements.clone();
-            if let Err(error)=session::blocking(move || records::save(&directory, request, &output, persisted)).await {
-                log::warn!("Output saved but provenance/statistics could not be recorded: {error}");
-                warnings.push("Output saved, but its reuse record could not be written. A later batch will identify it as unverified.".into());
-            }
-        }
-        update(ItemUpdate::Measurements(measurements));
-        Ok((!warnings.is_empty()).then(|| warnings.join(" ")))
-
-    }
-    .await;
-    // An early pipe/read/wait error can drop the lease before the child exits.
-    // Finish reaping before deleting files or starting the next batch item.
-    processes.wait_until_idle().await;
-    let mut cleanup_errors = Vec::new();
-    if result.is_err() {
-        if let Err(error) = fs::remove_file(&temp).await {
-            if error.kind() != std::io::ErrorKind::NotFound {
-                cleanup_errors.push(format!("temporary output: {error}"));
-            }
-        }
-    }
-    if !temp.exists() {
-        if let Err(error) = artifacts::forget(&temp).await {
-            cleanup_errors.push(error);
-        }
-    }
-    if let Some(staged) = staged {
-        if let Err(error) = staged.close() {
-            cleanup_errors.push(error);
-        }
-    }
-    if !cleanup_errors.is_empty() {
-        let details = cleanup_errors.join("; ");
-        return match result {
-            Ok(_) => Ok(Some(format!(
-                "Output saved; cleanup needs attention: {details}"
-            ))),
-            Err(error) => Err(format!("{error} Cleanup failed: {details}")),
-        };
-    }
-    result
 }
 
 pub async fn run_batch(
@@ -919,6 +546,17 @@ pub async fn run_batch_with_session(
     for (index, item) in plan.items.iter().enumerate() {
         if cancellation.is_cancelled() {
             state.phase = Phase::Cancelled;
+            break;
+        }
+        let destination = PathBuf::from(&plan.settings.output_dir);
+        let expected_volume = plan.settings.target_volume_id.clone();
+        if let Err(error) = session::blocking(move || {
+            storage::verify_target(&destination, expected_volume.as_deref())
+        })
+        .await
+        {
+            state.message = error;
+            interrupted = true;
             break;
         }
         let saved = match checkpoint
@@ -997,17 +635,13 @@ pub async fn run_batch_with_session(
                     }
                 }
             }
-            if existing {
-                if let Some(store) = &checkpoint {
-                    let store = store.clone();
-                    if let Err(error) =
-                        session::blocking(move || store.record_existing(index)).await
-                    {
-                        log::error!("Cannot checkpoint skipped output: {error}");
-                        state.message = error;
-                        interrupted = true;
-                        break;
-                    }
+            if existing && let Some(store) = &checkpoint {
+                let store = store.clone();
+                if let Err(error) = session::blocking(move || store.record_existing(index)).await {
+                    log::error!("Cannot checkpoint skipped output: {error}");
+                    state.message = error;
+                    interrupted = true;
+                    break;
                 }
             }
             if unverified {
@@ -1033,6 +667,7 @@ pub async fn run_batch_with_session(
             state.file_percent = Some(100.0);
             state.eta_seconds = Some(0.0);
             state.fps = None;
+            state.frame = None;
             state.speed = None;
             state.batch_percent = (index + 1) as f64 / state.total_files as f64 * 100.0;
             state.elapsed_seconds = start.elapsed().as_secs_f64();
@@ -1061,6 +696,7 @@ pub async fn run_batch_with_session(
             .map(|n| n.to_string_lossy().into_owned());
         state.file_percent = None;
         state.fps = None;
+        state.frame = None;
         state.speed = None;
         state.eta_seconds = None;
         state.batch_percent = index as f64 / state.total_files as f64 * 100.0;
@@ -1077,6 +713,8 @@ pub async fn run_batch_with_session(
             .as_deref()
             .is_some_and(|dir| !dir.trim().is_empty())
             && item.subtitle.is_none()
+            && plan.settings.selected_subtitle_index.is_none()
+            && plan.settings.preferred_sub_lang.is_none()
             && item.validation_error.is_none()
         {
             let reason =
@@ -1091,36 +729,48 @@ pub async fn run_batch_with_session(
             publish(state.clone());
         }
         if selected_encoder.is_none() {
-            selected_encoder = Some(hardware::detect_requested(&tools, &cancellation, &processes,
-                plan.settings.video.encoder_override).await);
+            selected_encoder = Some(
+                hardware::detect_requested(
+                    &tools,
+                    &cancellation,
+                    &processes,
+                    plan.settings.video.encoder_override,
+                )
+                .await,
+            );
         }
         let mut encoder = selected_encoder.unwrap_or(hardware::VideoEncoder::Cpu);
         state.encoder = Some(encoder.name().into());
         let result = loop {
             state.encoder = Some(encoder.name().into());
             let mut progress_gate = progress::ProgressGate::default();
-            let attempt = encode_item(
-                &tools,
-                &plan.settings,
+            let attempt = engine::Encoder {
+                tools: &tools,
+                settings: &plan.settings,
+                kind: plan.kind,
+                cancellation: &cancellation,
+                processes: &processes,
+            }
+            .encode(
                 item,
-                plan.kind,
                 encoder,
-                &cancellation,
-                &processes,
                 checkpoint.as_ref().map(|store| (store, index)),
                 |update| {
                     match update {
-                        ItemUpdate::Progress(percent, fps, speed, eta) => {
+                        ItemUpdate::Progress(percent, fps, speed, eta, frame) => {
                             state.file_percent = percent;
                             state.batch_percent = (index as f64 + percent.unwrap_or(0.0) / 100.0)
                                 / state.total_files as f64
                                 * 100.0;
                             state.fps = fps;
+                            state.frame = frame;
                             state.speed = speed;
                             state.eta_seconds = eta;
                             let percent_changed = progress_gate.should_emit(percent);
                             let eta_changed = progress_gate.should_emit_eta(eta);
-                            if !percent_changed && !eta_changed {
+                            let metrics_changed =
+                                progress_gate.should_emit_metrics(fps, state.speed.as_deref());
+                            if !percent_changed && !eta_changed && !metrics_changed {
                                 return;
                             }
                         }
@@ -1171,13 +821,13 @@ pub async fn run_batch_with_session(
                 state.file_percent = Some(100.0);
                 state.eta_seconds = Some(0.0);
             }
-            if let Err(reason) = &result {
-                if reason != "Encoding cancelled." {
-                    state.errors.push(ItemFailure {
-                        file_name: name.clone(),
-                        reason: reason.clone(),
-                    });
-                }
+            if let Err(reason) = &result
+                && reason != "Encoding cancelled."
+            {
+                state.errors.push(ItemFailure {
+                    file_name: name.clone(),
+                    reason: reason.clone(),
+                });
             }
             break;
         }
@@ -1227,14 +877,15 @@ pub async fn run_batch_with_session(
     } else {
         Phase::Failed
     };
-    if !interrupted && state.phase != Phase::Cancelled {
-        if let Some(store) = &checkpoint {
-            let store = store.clone();
-            let job_id = plan.job_id.clone();
-            if let Err(error) = session::blocking(move || store.finish(&job_id)).await {
-                log::error!("Cannot clear finished checkpoint: {error}");
-                state.warnings.push(ItemFailure { file_name: "Recovery state".into(), reason: "Completed output was saved, but the finished checkpoint could not be cleared. Review recovery on the next launch.".into() });
-            }
+    if !interrupted
+        && state.phase != Phase::Cancelled
+        && let Some(store) = &checkpoint
+    {
+        let store = store.clone();
+        let job_id = plan.job_id.clone();
+        if let Err(error) = session::blocking(move || store.finish(&job_id)).await {
+            log::error!("Cannot clear finished checkpoint: {error}");
+            state.warnings.push(ItemFailure { file_name: "Recovery state".into(), reason: "Completed output was saved, but the finished checkpoint could not be cleared. Review recovery on the next launch.".into() });
         }
     }
     state.message = if interrupted {
@@ -1264,6 +915,42 @@ pub async fn run_batch_with_session(
 mod tests {
     use super::*;
     #[tokio::test]
+    async fn preview_uses_its_cache_volume_and_batch_rejects_replaced_targets() {
+        let root = tempfile::tempdir().expect("fixture");
+        let input = root.path().join("Ep03.mkv");
+        std::fs::write(&input, []).expect("source");
+        let output = root.path().join("not-created");
+        let settings = Settings {
+            target_volume_id: Some("disconnected-card".into()),
+            input_dir: input.to_string_lossy().into_owned(),
+            output_dir: output.to_string_lossy().into_owned(),
+            crf: 23,
+            video: VideoSettings::default(),
+            cpu_mode: CpuMode::Maximum,
+            subtitle_dir: None,
+            anime_title: String::new(),
+            selected_audio_index: None,
+            selected_subtitle_index: None,
+            preferred_sub_lang: None,
+            preferred_audio_lang: None,
+        };
+        let error = BatchPlan::prepare("batch".into(), settings.clone())
+            .await
+            .expect_err("wrong volume");
+        assert!(error.contains("disconnected or replaced"));
+        assert!(!output.exists());
+
+        let cache = root.path().join("preview-cache");
+        let preview = BatchPlan::prepare_preview("preview".into(), settings, &cache)
+            .await
+            .expect("preview uses local cache");
+        assert_eq!(
+            preview.settings.target_volume_id,
+            Some(storage::inspect(&cache).expect("cache volume").id)
+        );
+        assert_eq!(preview.kind, TaskKind::Preview);
+    }
+    #[tokio::test]
     async fn single_file_queue_keeps_exact_video_and_scopes_subtitle_selection() {
         let root = tempfile::tempdir().expect("fixture");
         let input = root.path().join("input");
@@ -1281,8 +968,11 @@ mod tests {
             let plan = BatchPlan::prepare(
                 "single-file".into(),
                 Settings {
+                    target_volume_id: None,
                     video: Default::default(),
                     selected_audio_index: None,
+                    selected_subtitle_index: None,
+                    preferred_sub_lang: None,
                     preferred_audio_lang: None,
                     input_dir: video.to_string_lossy().into_owned(),
                     output_dir: output.to_string_lossy().into_owned(),
@@ -1327,8 +1017,11 @@ mod tests {
         let plan = BatchPlan::prepare(
             "folder".into(),
             Settings {
+                target_volume_id: None,
                 video: Default::default(),
                 selected_audio_index: None,
+                selected_subtitle_index: None,
+                preferred_sub_lang: None,
                 preferred_audio_lang: None,
                 input_dir: input.to_string_lossy().into_owned(),
                 output_dir: output.to_string_lossy().into_owned(),
@@ -1348,8 +1041,11 @@ mod tests {
         let input = root.path().join("input");
         std::fs::create_dir(&input).expect("input");
         let mut settings = Settings {
+            target_volume_id: None,
             video: Default::default(),
             selected_audio_index: None,
+            selected_subtitle_index: None,
+            preferred_sub_lang: None,
             preferred_audio_lang: None,
             input_dir: String::new(),
             output_dir: root.path().join("output").to_string_lossy().into_owned(),

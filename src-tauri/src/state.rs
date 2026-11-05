@@ -134,14 +134,13 @@ impl BatchManager {
 
 impl Drop for JobReservation {
     fn drop(&mut self) {
-        if let Ok(mut state) = self.manager.0.lock() {
-            if state
+        if let Ok(mut state) = self.manager.0.lock()
+            && state
                 .active
                 .as_ref()
                 .is_some_and(|active| active.job_id == self.job_id)
-            {
-                state.active = None;
-            }
+        {
+            state.active = None;
         }
         self.finished.send_replace(true);
     }
@@ -172,6 +171,7 @@ mod tests {
             failed: 1,
             elapsed_seconds: 12.0,
             fps: Some(60.0),
+            frame: Some(720),
             speed: Some("2x".into()),
             eta_seconds: Some(5.0),
             message: "Encoding".into(),

@@ -67,14 +67,13 @@ impl Detection {
                 self.frame = Some(frame);
             }
         }
-        if line.contains("Parsed_cropdetect_") {
-            if let Some(value) = line
+        if line.contains("Parsed_cropdetect_")
+            && let Some(value) = line
                 .split_whitespace()
                 .find_map(|part| part.strip_prefix("crop="))
-            {
-                self.candidate = self.frame.and_then(|frame| CropRect::parse(value, frame));
-                self.reports = self.reports.saturating_add(1);
-            }
+        {
+            self.candidate = self.frame.and_then(|frame| CropRect::parse(value, frame));
+            self.reports = self.reports.saturating_add(1);
         }
     }
     fn finish(self) -> Option<CropRect> {

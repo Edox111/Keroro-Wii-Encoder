@@ -239,10 +239,10 @@ pub fn pair_subtitles(videos: &[PathBuf], subtitles: &[PathBuf]) -> SubtitlePair
                 None
             }
         };
-        if let Some(position) = candidate {
-            if let Some(count) = claims.get_mut(position) {
-                *count += 1;
-            }
+        if let Some(position) = candidate
+            && let Some(count) = claims.get_mut(position)
+        {
+            *count += 1;
         }
         proposals.push(candidate);
     }

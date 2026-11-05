@@ -134,7 +134,7 @@ pub async fn read(path: &Path) -> Result<SubtitleText, ReadError> {
 }
 
 fn time(value: &str, decimal: char, digits: usize, short: bool) -> Option<u64> {
-    let value = value.trim().split_whitespace().next()?;
+    let value = value.split_whitespace().next()?;
     let mut fields = value.split(':');
     let first = fields.next()?;
     let second = fields.next()?;

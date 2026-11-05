@@ -77,10 +77,10 @@ impl Log for LocalLogger {
         );
     }
     fn flush(&self) {
-        if let Ok(mut sink) = self.sink.try_lock() {
-            if let Some(file) = sink.file.as_mut() {
-                let _ = file.sync_data();
-            }
+        if let Ok(mut sink) = self.sink.try_lock()
+            && let Some(file) = sink.file.as_mut()
+        {
+            let _ = file.sync_data();
         }
     }
 }

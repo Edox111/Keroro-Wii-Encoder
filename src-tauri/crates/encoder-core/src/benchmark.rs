@@ -98,8 +98,11 @@ async fn synthetic_benchmark_report() {
                     name.replace(' ', "-")
                 ));
                 let settings = Settings {
+                    target_volume_id: None,
                     video: Default::default(),
                     selected_audio_index: None,
+                    selected_subtitle_index: None,
+                    preferred_sub_lang: None,
                     preferred_audio_lang: None,
                     input_dir: input.to_string_lossy().into_owned(),
                     output_dir: root.to_string_lossy().into_owned(),
@@ -116,21 +119,18 @@ async fn synthetic_benchmark_report() {
                     validation_error: None,
                 };
                 let mut measured = None;
-                encode_item(
-                    &tools,
-                    &settings,
-                    &item,
-                    TaskKind::Batch,
-                    encoder,
-                    &cancel,
-                    &processes,
-                    None,
-                    |event| {
-                        if let ItemUpdate::Measurements(m) = event {
-                            measured = Some(m)
-                        }
-                    },
-                )
+                engine::Encoder {
+                    tools: &tools,
+                    settings: &settings,
+                    kind: TaskKind::Batch,
+                    cancellation: &cancel,
+                    processes: &processes,
+                }
+                .encode(&item, encoder, None, |event| {
+                    if let ItemUpdate::Measurements(m) = event {
+                        measured = Some(m)
+                    }
+                })
                 .await
                 .expect("benchmark encode");
                 let m = measured.expect("measurements");

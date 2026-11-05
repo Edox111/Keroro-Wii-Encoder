@@ -20,6 +20,9 @@ function rejectLinks(filePath) {
 }
 
 try {
+  const version = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).version;
+  if (typeof version !== "string" || !/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(version)) throw new Error("Invalid release version.");
+  const releaseName = `Keroro-Wii-Encoder-v${version}.exe`;
   rejectLinks(buildDirectory);
   const executable = fs.readdirSync(buildDirectory, { withFileTypes: true })
     .find((entry) => entry.isFile() && entry.name.toLowerCase() === "keroro-wii-encoder.exe");
@@ -27,7 +30,7 @@ try {
 
   const binaries = path.join(root, "src-tauri", "binaries");
   const files = [
-    [path.join(buildDirectory, executable.name), "Keroro-Wii-Encoder-v1.0.exe"],
+    [path.join(buildDirectory, executable.name), releaseName],
     [path.join(binaries, "ffmpeg-x86_64-pc-windows-msvc.exe"), "ffmpeg.exe"],
     [path.join(binaries, "ffprobe-x86_64-pc-windows-msvc.exe"), "ffprobe.exe"],
     [path.join(binaries, "FFmpeg-LICENSE.txt"), "FFmpeg-LICENSE.txt"],
@@ -46,7 +49,7 @@ try {
   for (const [source, name] of files) {
     fs.copyFileSync(source, path.join(releaseDirectory, name));
   }
-  console.log(`Release ready: ${path.join(releaseDirectory, "Keroro-Wii-Encoder-v1.0.exe")}`);
+  console.log(`Release ready: ${path.join(releaseDirectory, releaseName)}`);
   console.log("Keep ffmpeg.exe and ffprobe.exe beside the application.");
 } catch (error) {
   console.error(`Release extraction failed: ${error instanceof Error ? error.message : String(error)}`);

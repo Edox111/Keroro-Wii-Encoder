@@ -1,5 +1,10 @@
-//! Desktop bootstrap; media processing is isolated in encoder-core.
+mod drive_target;
+mod gpu_probe;
+mod preview;
+mod process_control;
+// Desktop bootstrap; media processing is isolated in encoder-core.
 mod commands;
+mod completion;
 mod execution;
 mod lifecycle;
 mod state;
@@ -35,6 +40,15 @@ pub fn run() {
             commands::resume_encode,
             commands::analyze_dropped_paths,
             commands::probe_media_streams,
+            commands::get_available_encoders,
+            commands::get_connected_drives,
+            commands::inspect_output_target,
+            commands::prepare_wii_drive,
+            preview::generate_preview_snapshot,
+            preview::cancel_preview_snapshot,
+            process_control::pause_encoding,
+            process_control::resume_encoding,
+            completion::open_output_folder,
             commands::get_recovery,
             commands::resume_batch,
             commands::discard_recovery,

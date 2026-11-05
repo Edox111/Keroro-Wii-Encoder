@@ -36,10 +36,66 @@ fn candidates(listing: &str) -> Vec<VideoEncoder> {
         .collect()
 }
 
+pub async fn available(
+    tools: &Tools,
+    cancel: &Cancellation,
+    processes: &Arc<ActiveProcess>,
+) -> Result<Vec<VideoEncoder>, String> {
+    let mut command = process(&tools.ffmpeg);
+    command.args(["-hide_banner", "-encoders"]);
+    let listing = probe(command, cancel, processes).await?;
+    let mut encoders = vec![VideoEncoder::Cpu];
+    for encoder in candidates(&listing) {
+        if cancel.is_cancelled() {
+            return Err("Encoder detection cancelled.".into());
+        }
+        if usable(tools, cancel, processes, encoder).await {
+            encoders.push(encoder);
+        }
+    }
+    Ok(encoders)
+}
+
+async fn usable(
+    tools: &Tools,
+    cancel: &Cancellation,
+    processes: &Arc<ActiveProcess>,
+    encoder: VideoEncoder,
+) -> bool {
+    let mut command = process(&tools.ffmpeg);
+    command.args([
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-f",
+        "lavfi",
+        "-i",
+        "color=c=black:s=640x480:r=30:d=0.1",
+    ]);
+    profile::configure(&mut command, profile::VIDEO_FILTER, encoder, 20, "0", 30);
+    command.args(["-frames:v", "2", "-an", "-f", "null", "-"]);
+    match probe(command, cancel, processes).await {
+        Ok(_) => true,
+        Err(error) => {
+            log::info!("{} driver probe failed: {error}", encoder.name());
+            false
+        }
+    }
+}
+
 pub(crate) async fn probe(
+    command: Command,
+    cancel: &Cancellation,
+    processes: &Arc<ActiveProcess>,
+) -> Result<String, String> {
+    probe_timeout(command, cancel, processes, Duration::from_secs(8)).await
+}
+
+pub(crate) async fn probe_timeout(
     mut command: Command,
     cancel: &Cancellation,
     processes: &Arc<ActiveProcess>,
+    timeout: Duration,
 ) -> Result<String, String> {
     let mut child = command
         .stdin(Stdio::null())
@@ -62,7 +118,7 @@ pub(crate) async fn probe(
     let diagnostics = tokio::spawn(async move { diagnostics::monitor(stderr, |_| {}).await });
     let status = tokio::select! {
         _ = cancel.cancelled() => Err("Encoder detection cancelled.".to_string()),
-        status = tokio::time::timeout(Duration::from_secs(8), lease.wait()) =>
+        status = tokio::time::timeout(timeout, lease.wait()) =>
             status.map_err(|_| "Encoder probe timed out.".to_string()).and_then(|status| status),
     };
     if status.is_err() {
@@ -117,30 +173,12 @@ pub async fn detect_requested(
         if cancel.is_cancelled() {
             break;
         }
-        let mut command = process(&tools.ffmpeg);
-        command.args([
-            "-hide_banner",
-            "-loglevel",
-            "error",
-            "-f",
-            "lavfi",
-            "-i",
-            "color=c=black:s=640x480:r=30:d=0.1",
-        ]);
-        profile::configure(&mut command, profile::VIDEO_FILTER, encoder, 23, "0", 30);
-        command.args(["-frames:v", "2", "-an", "-f", "null", "-"]);
-        match probe(command, cancel, processes).await {
-            Ok(_) => {
-                log::info!("Selected usable video encoder: {}", encoder.name());
-                return encoder;
-            }
-            Err(error) => log::info!(
-                "{} is listed but unusable; trying next encoder: {error}",
-                encoder.name()
-            ),
+        if usable(tools, cancel, processes, encoder).await {
+            log::info!("Selected usable video encoder: {}", encoder.name());
+            return encoder;
         }
     }
-    log::info!("Selected CPU encoder: libx264 superfast / automatic threads");
+    log::info!("Selected CPU encoder: libx264 medium / automatic threads");
     VideoEncoder::Cpu
 }
 
@@ -191,7 +229,12 @@ mod tests {
         probe(cpu, &cancel, &processes)
             .await
             .expect("CPU superfast/automatic-thread fallback profile");
+        let available = available(&tools, &cancel, &processes)
+            .await
+            .expect("available encoders");
+        assert_eq!(available[0], VideoEncoder::Cpu);
         let selected = detect(&tools, &cancel, &processes).await;
+        assert!(available.contains(&selected));
         assert!(selected == VideoEncoder::Cpu || candidates(&listing).contains(&selected));
         assert!(processes.0.lock().expect("slot").is_none());
         assert!(!processes.is_paused());

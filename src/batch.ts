@@ -19,6 +19,7 @@ export interface BatchProgress {
   failed: number;
   elapsedSeconds: number;
   fps: number | null;
+  frame?: number | null;
   speed: string | null;
   etaSeconds?: number | null;
   message: string;
@@ -31,6 +32,12 @@ export function isTerminal(phase: Phase): boolean {
 }
 
 export interface EncodingProgress {
+  fileId?: string;
+  progressPercent?: number | null;
+  fps?: number | null;
+  frame?: number | null;
+  speed?: number | null;
+  etaSeconds?: number | null;
   file: string;
   percentage: number | null;
   eta: string;

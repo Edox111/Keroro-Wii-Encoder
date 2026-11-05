@@ -1,0 +1,11 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import ts from "typescript";
+const js=ts.transpileModule(await readFile(new URL("../src/performance.ts",import.meta.url),"utf8"),{compilerOptions:{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.ESNext}}).outputText;
+const {performanceLabel}=await import(`data:text/javascript;base64,${Buffer.from(js).toString("base64")}`);
+assert.match(performanceLabel(45.5,52,"1.8x",84),/45%.*1\.80x Speed.*52\.0 FPS.*01:24/);
+assert.equal(performanceLabel(45,52,1.8,84,true),"Paused");
+assert(!performanceLabel(null,null,null,null).includes("NaN"));
+assert.match(performanceLabel(NaN,Infinity,"N/A",NaN),/Measuring.*-- Speed.*-- FPS.*ETA: --/);
+assert.match(performanceLabel(1000,0,0,0),/100%.*-- Speed.*0\.0 FPS.*00:00/);
+console.log("Performance labels handle numeric/string speed, pause, ETA, and unknown/non-finite metrics.");
